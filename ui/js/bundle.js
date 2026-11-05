@@ -1264,6 +1264,12 @@
         if (cleanLive.loopTrack.grayscale !== undefined) {
           nextBg.grayscale = Boolean(cleanLive.loopTrack.grayscale);
         }
+        if (cleanLive.loopTrack.flipX !== undefined) {
+          nextBg.flipX = Boolean(cleanLive.loopTrack.flipX);
+        }
+        if (cleanLive.loopTrack.flipY !== undefined) {
+          nextBg.flipY = Boolean(cleanLive.loopTrack.flipY);
+        }
       } else {
         // Sıradaki medyaya özel loop video ekli değilse, önceki medyanın loop videosu kapatılır ve taşınmaz!
         nextBg.enabled = false;
@@ -3698,12 +3704,17 @@
       this.bgLayer.style.backfaceVisibility = 'hidden';
       const blur = bg.blur || 0;
       const isGrayscale = Boolean(bg.grayscale);
+      const isFlipX = Boolean(bg.flipX || bg.flipH);
+      const isFlipY = Boolean(bg.flipY || bg.flipV);
       const filters = [];
       if (isGrayscale) filters.push('grayscale(100%) contrast(106%)');
       if (blur > 0) filters.push(`blur(${blur}px)`);
       const filterVal = filters.length > 0 ? filters.join(' ') : 'none';
       if (this.bgLayer.style.filter !== filterVal) this.bgLayer.style.filter = filterVal;
-      const transformVal = blur > 0 ? 'scale(1.06) translate3d(0,0,0)' : 'translate3d(0,0,0)';
+      const scaleX = isFlipX ? -1 : 1;
+      const scaleY = isFlipY ? -1 : 1;
+      const baseScale = blur > 0 ? 1.06 : 1.0;
+      const transformVal = `scale(${scaleX * baseScale}, ${scaleY * baseScale}) translate3d(0,0,0)`;
       if (this.bgLayer.style.transform !== transformVal) this.bgLayer.style.transform = transformVal;
       const opacityVal = String((bg.opacity !== undefined) ? bg.opacity : 0.35);
       if (this.bgLayer.style.opacity !== opacityVal) this.bgLayer.style.opacity = opacityVal;
@@ -4794,7 +4805,11 @@
       this.btnCheckLoop = document.getElementById('btn-check-loop');
       this.btnDisableAllLoop = document.getElementById('btn-disable-all-loop');
       this.btnLoopBw = document.getElementById('btn-loop-bw');
+      this.btnLoopFlipX = document.getElementById('btn-loop-flip-x');
+      this.btnLoopFlipY = document.getElementById('btn-loop-flip-y');
       this.previewLoopGrayscale = false;
+      this.previewLoopFlipX = false;
+      this.previewLoopFlipY = false;
       this.selectMediaLoop = document.getElementById('select-media-loop');
       this.btnMediaLoopToggle = document.getElementById('btn-media-loop-toggle');
 
@@ -7436,6 +7451,52 @@
         });
       }
 
+      // Yatay Ayna (Flip X)
+      if (this.btnLoopFlipX) {
+        this._updateLoopFlipButtonsUi();
+        this.btnLoopFlipX.addEventListener('click', () => {
+          this.previewLoopFlipX = !this.previewLoopFlipX;
+          const selItem = this._selectedItem();
+          if (selItem && selItem.loopTrack && selItem.loopTrack.src) {
+            selItem.loopTrack.flipX = this.previewLoopFlipX;
+            this.saveCurrentPlaylist?.();
+          }
+          const curBg = this.appState.getState().globalBackground || {};
+          if (curBg.enabled) {
+            this.appState.setGlobalBackground({ flipX: this.previewLoopFlipX });
+          }
+          this._updateLoopFlipButtonsUi();
+          this._applyPreviewLoopTransforms();
+          this._toast?.(
+            this.previewLoopFlipX ? '⇄ Loop Video: Yatay ayna (sağa-sola ters) aktif' : '⇄ Loop Video: Yatay ayna kapatıldı',
+            this.previewLoopFlipX ? 'ok' : 'info'
+          );
+        });
+      }
+
+      // Dikey Ayna (Flip Y)
+      if (this.btnLoopFlipY) {
+        this._updateLoopFlipButtonsUi();
+        this.btnLoopFlipY.addEventListener('click', () => {
+          this.previewLoopFlipY = !this.previewLoopFlipY;
+          const selItem = this._selectedItem();
+          if (selItem && selItem.loopTrack && selItem.loopTrack.src) {
+            selItem.loopTrack.flipY = this.previewLoopFlipY;
+            this.saveCurrentPlaylist?.();
+          }
+          const curBg = this.appState.getState().globalBackground || {};
+          if (curBg.enabled) {
+            this.appState.setGlobalBackground({ flipY: this.previewLoopFlipY });
+          }
+          this._updateLoopFlipButtonsUi();
+          this._applyPreviewLoopTransforms();
+          this._toast?.(
+            this.previewLoopFlipY ? '⇅ Loop Video: Dikey ters çevirme aktif' : '⇅ Loop Video: Dikey ters çevirme kapatıldı',
+            this.previewLoopFlipY ? 'ok' : 'info'
+          );
+        });
+      }
+
       // Loop Arka Plan Açma / Onaylama / Kapatma (btn-check-loop)
       if (this.btnCheckLoop) {
         this._updateLoopButtonUi();
@@ -7462,7 +7523,9 @@
               src: targetSrc,
               loop: true,
               opacity: isNaN(opacity) ? 0.35 : opacity,
-              grayscale: Boolean(this.previewLoopGrayscale)
+              grayscale: Boolean(this.previewLoopGrayscale),
+              flipX: Boolean(this.previewLoopFlipX),
+              flipY: Boolean(this.previewLoopFlipY)
             });
             this.previewLoopSrc = targetSrc;
             this.previewLoopEnabled = true;
@@ -7582,7 +7645,7 @@
       const savedOpacity = Number.isFinite(rawPct) ? Math.max(0, Math.min(1, rawPct / 100)) : 0.35;
       const pctLabel = Math.round(savedOpacity * 100);
 
-      item.loopTrack = src ? { src, name, enabled: true, opacity: savedOpacity, grayscale: Boolean(this.previewLoopGrayscale) } : null;
+      item.loopTrack = src ? { src, name, enabled: true, opacity: savedOpacity, grayscale: Boolean(this.previewLoopGrayscale), flipX: Boolean(this.previewLoopFlipX), flipY: Boolean(this.previewLoopFlipY) } : null;
 
       // Canlı yayındaki öğeyse ekranı ve canlı arka planı da güncelle
       const st = this.appState.getState();
@@ -7629,10 +7692,13 @@
           if (this.sliderLoopOpacity) this.sliderLoopOpacity.value = String(pct);
           if (this.opacityValDisplay) this.opacityValDisplay.textContent = `%${pct}`;
         }
-        if (item && item.loopTrack && item.loopTrack.grayscale !== undefined) {
-          this.previewLoopGrayscale = Boolean(item.loopTrack.grayscale);
+        if (item && item.loopTrack) {
+          if (item.loopTrack.grayscale !== undefined) this.previewLoopGrayscale = Boolean(item.loopTrack.grayscale);
+          if (item.loopTrack.flipX !== undefined) this.previewLoopFlipX = Boolean(item.loopTrack.flipX);
+          if (item.loopTrack.flipY !== undefined) this.previewLoopFlipY = Boolean(item.loopTrack.flipY);
           this._updateLoopBwButtonUi();
-          this._applyPreviewLoopFilter(this.previewLoopGrayscale);
+          this._updateLoopFlipButtonsUi();
+          this._applyPreviewLoopTransforms();
         }
       }
       this.selectMediaLoop.disabled = !item;
@@ -8055,14 +8121,39 @@
       }
     }
 
-    _applyPreviewLoopFilter(isBw) {
+    _updateLoopFlipButtonsUi() {
+      if (this.btnLoopFlipX) {
+        const isFlipX = Boolean(this.previewLoopFlipX);
+        this.btnLoopFlipX.classList.toggle('is-active', isFlipX);
+        this.btnLoopFlipX.title = isFlipX
+          ? 'Yatay Ayna Aktif (Sağa-sola ters). Normale dönmek için tıklayın.'
+          : 'Yatay Ayna: Loop videoyu yatayda (sağa-sola) ters çevirir / aynalar.';
+      }
+      if (this.btnLoopFlipY) {
+        const isFlipY = Boolean(this.previewLoopFlipY);
+        this.btnLoopFlipY.classList.toggle('is-active', isFlipY);
+        this.btnLoopFlipY.title = isFlipY
+          ? 'Dikey Ters Aktif (Yukarı-aşağı ters). Normale dönmek için tıklayın.'
+          : 'Dikey Ters: Loop videoyu dikeyde (yukarı-aşağı) ters çevirir.';
+      }
+    }
+
+    _applyPreviewLoopTransforms() {
       if (!this.mediaPreviewArea) return;
-      const filterVal = isBw ? 'grayscale(100%) contrast(106%)' : 'none';
-      const overlays = this.mediaPreviewArea.querySelectorAll('[data-loop-overlay], video[data-pv-loop-vid]');
+      const filterVal = this.previewLoopGrayscale ? 'grayscale(100%) contrast(106%)' : 'none';
+      const scaleX = this.previewLoopFlipX ? -1 : 1;
+      const scaleY = this.previewLoopFlipY ? -1 : 1;
+      const transformVal = `scale(${scaleX}, ${scaleY}) translate3d(0,0,0)`;
+      const overlays = this.mediaPreviewArea.querySelectorAll('[data-loop-overlay]');
       overlays.forEach(el => {
-        el.style.transition = 'filter 250ms ease';
+        el.style.transition = 'filter 250ms ease, transform 250ms ease';
         el.style.filter = filterVal;
+        el.style.transform = transformVal;
       });
+    }
+
+    _applyPreviewLoopFilter(isBw) {
+      this._applyPreviewLoopTransforms();
     }
 
     _applyPreviewLedConfigInPlace(ledCfg, currentItem) {
@@ -8150,7 +8241,7 @@
           this.mediaPreviewArea.innerHTML = `
             <div class="staging-monitor-wrapper" style="aspect-ratio:${_sW} / ${_sH};">
               <div class="staging-monitor-content" style="position:relative; width:100%; height:100%; overflow:hidden; background:#000;">
-                <div data-loop-overlay style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:5; opacity:${_sOp}; filter:${this.previewLoopGrayscale ? 'grayscale(100%) contrast(106%)' : 'none'}; transition:filter 250ms ease; transform:translate3d(0,0,0);">
+                <div data-loop-overlay style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:5; opacity:${_sOp}; filter:${this.previewLoopGrayscale ? 'grayscale(100%) contrast(106%)' : 'none'}; transition:filter 250ms ease, transform 250ms ease; transform:scale(${this.previewLoopFlipX ? -1 : 1}, ${this.previewLoopFlipY ? -1 : 1}) translate3d(0,0,0);">
                   <video src="${_standaloneLoopSrc}" data-pv-loop-vid autoplay muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
                 </div>
               </div>
@@ -8344,7 +8435,7 @@
       const isAudioFullLoop = (currentItem.type === 'audio' && (_pvSettings.audioScreenMode === 'loop'));
       if (!isAudioFullLoop && shouldShowPreviewLoop && (curOpacity > 0)) {
         loopOverlayHtml = `
-          <div data-loop-overlay style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:5; opacity:${curOpacity}; filter:${this.previewLoopGrayscale ? 'grayscale(100%) contrast(106%)' : 'none'}; transition:filter 250ms ease; transform:translate3d(0,0,0);">
+          <div data-loop-overlay style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:5; opacity:${curOpacity}; filter:${this.previewLoopGrayscale ? 'grayscale(100%) contrast(106%)' : 'none'}; transition:filter 250ms ease, transform 250ms ease; transform:scale(${this.previewLoopFlipX ? -1 : 1}, ${this.previewLoopFlipY ? -1 : 1}) translate3d(0,0,0);">
             <video src="${loopSrcToPreview}" data-pv-loop-vid autoplay muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
           </div>
         `;

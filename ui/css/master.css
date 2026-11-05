@@ -4022,13 +4022,15 @@ body.layout-locked .splitter-h:hover::before {
 }
 
 /* SİYAH-BEYAZ LOOP FİLTRESİ */
-.btn-loop-bw.is-active {
+.btn-loop-bw.is-active,
+.btn-loop-flip.is-active {
   background: rgba(56, 189, 248, 0.18) !important;
   border-color: #38bdf8 !important;
   color: #38bdf8 !important;
   box-shadow: 0 0 8px rgba(56, 189, 248, 0.35) !important;
 }
-.btn-loop-bw:hover {
+.btn-loop-bw:hover,
+.btn-loop-flip:hover {
   border-color: var(--accent-blue);
   color: var(--text-main);
 }
