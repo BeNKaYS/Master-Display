@@ -1182,20 +1182,26 @@
     _startTicker() {
       let lastTickNotify = 0;
       const tick = () => {
-        if (this.state.playbackState === 'playing' && this.state.endAt > 0) {
+        if (this.state.playbackState === 'playing') {
           const now = Date.now();
-          const remaining = Math.max(0, this.state.endAt - now);
+          if (this.state.endAt > 0) {
+            const remaining = Math.max(0, this.state.endAt - now);
 
-          if (remaining === 0) {
-            // Yayın sonunu YALNIZCA reji konsolu belirler (hakem = master).
-            // Display kendi saatiyle bitirirse iki ekran arasında kare kayması
-            // ve "ekran karardı / ses devam ediyor" gibi desenkronlar oluşuyordu.
-            if (this.state.role === 'master') {
-              this.state.remaining = 0;
-              this.handleItemTimeUp();
+            if (remaining === 0) {
+              // Yayın sonunu YALNIZCA reji konsolu belirler (hakem = master).
+              // Display kendi saatiyle bitirirse iki ekran arasında kare kayması
+              // ve "ekran karardı / ses devam ediyor" gibi desenkronlar oluşuyordu.
+              if (this.state.role === 'master') {
+                this.state.remaining = 0;
+                this.handleItemTimeUp();
+              }
+            } else if (now - lastTickNotify >= 250) {
+              this.state.remaining = remaining;
+              lastTickNotify = now;
+              this._notifyListeners();
             }
-          } else if (now - lastTickNotify >= 250) {
-            this.state.remaining = remaining;
+          } else if (this.state.liveItem && (now - lastTickNotify >= 500)) {
+            // Görsel / süresiz akışlarda geçen sürenin ekranda canlı sayması için bildirim
             lastTickNotify = now;
             this._notifyListeners();
           }
@@ -8790,19 +8796,36 @@
           const curSlide = (state.liveItem.activeSlide || 0) + 1;
           const totSlides = (state.liveItem.slides && state.liveItem.slides.length) || 1;
           const pct = Math.round((curSlide / totSlides) * 100);
-          if (this.playbackTimer) this.playbackTimer.textContent = `📊 Slayt ${curSlide} / ${totSlides} (Manuel)`;
+          const startedAt = state.playRequestId || 0;
+          const elapsedSec = startedAt > 0 ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
+          const strElapsed = this._fmt(elapsedSec);
+
+          if (this.playbackTimer) this.playbackTimer.textContent = `📊 Slayt ${curSlide} / ${totSlides} (${strElapsed})`;
           if (this.scrubberCurTime && !this.isScrubbing) this.scrubberCurTime.textContent = `Slayt ${curSlide}`;
-          if (this.scrubberTotalTime) this.scrubberTotalTime.textContent = `${totSlides} Slayt`;
+          if (this.scrubberTotalTime) {
+            this.scrubberTotalTime.textContent = strElapsed;
+            this.scrubberTotalTime.title = `Geçen Süre (Toplam ${totSlides} Slayt)`;
+          }
           if (this.playbackProgressBar) this.playbackProgressBar.style.width = `${pct}%`;
           if (!this.isScrubbing) {
             if (this.scrubberSlider) this.scrubberSlider.value = pct;
             if (this.scrubberFill) this.scrubberFill.style.width = `${pct}%`;
           }
         } else {
-          // Görsel (Resim): Süre saymaz, operatör değiştirene kadar ekranda kalır
-          if (this.playbackTimer) this.playbackTimer.textContent = '🖼️ CANLI (Süresiz / Manuel)';
-          if (this.scrubberCurTime && !this.isScrubbing) this.scrubberCurTime.textContent = 'CANLI';
-          if (this.scrubberTotalTime) this.scrubberTotalTime.textContent = 'SÜRESİZ';
+          // Görsel (Resim): Süre sınırı yok, geçen süreyi saniye saniye göster
+          const startedAt = state.playRequestId || 0;
+          const elapsedSec = startedAt > 0 ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
+          const strElapsed = this._fmt(elapsedSec);
+
+          if (this.playbackTimer) this.playbackTimer.textContent = `🖼️ CANLI (${strElapsed})`;
+          if (this.scrubberCurTime && !this.isScrubbing) {
+            this.scrubberCurTime.textContent = 'CANLI';
+            this.scrubberCurTime.title = 'Görsel Canlı Yayında';
+          }
+          if (this.scrubberTotalTime) {
+            this.scrubberTotalTime.textContent = strElapsed;
+            this.scrubberTotalTime.title = 'Ekranda Geçen Süre';
+          }
           if (this.playbackProgressBar) this.playbackProgressBar.style.width = '100%';
           if (!this.isScrubbing) {
             if (this.scrubberSlider) this.scrubberSlider.value = 100;
