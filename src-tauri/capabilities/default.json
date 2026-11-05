@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Master-Display varsayılan yetkileri (tüm pencereler)",
+  "windows": ["*"],
+  "permissions": ["core:default"]
+}

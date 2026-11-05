@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>proof</title>
+<style>html,body{margin:0;background:#0b0d12;overflow:hidden}
+iframe{border:0;display:block;width:1400px;height:900px}</style></head>
+<body>
+<iframe id="f" src="index.html?proof=1"></iframe>
+<script>
+const f = document.getElementById('f');
+f.addEventListener('load', () => setTimeout(() => {
+  const w = f.contentWindow, d = f.contentDocument;
+  const app = w.__MasterApp;
+  if (!app) { document.title = 'NO APP'; return; }
+
+  // Ayarlar modalini ac
+  d.getElementById('menu-settings').click();
+
+  setTimeout(() => {
+    const box = d.querySelector('.modal-body-content');
+    const picker = d.getElementById('audio-loop-picker');
+    if (picker && box) box.scrollTop = picker.offsetTop - 260;
+    document.title = 'OK modal=' + (d.getElementById('modal-ceremony-settings').style.display !== 'none')
+      + ' picker=' + !!picker
+      + ' musicOpts=' + (d.getElementById('select-audio-loop-music')?.options.length || 0)
+      + ' videoOpts=' + (d.getElementById('select-audio-loop')?.options.length || 0);
+  }, 700);
+}, 2200));
+</script>
+</body></html>

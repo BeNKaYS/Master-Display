@@ -1,0 +1,1027 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ceremony & Stage Presentation Manager</title>
+  <script>
+    (function() {
+      var _w = console.warn;
+      console.warn = function() {
+        if (arguments.length > 0 && typeof arguments[0] === 'string' && arguments[0].indexOf("[TAURI] Couldn't find callback id") !== -1) {
+          return;
+        }
+        return _w.apply(console, arguments);
+      };
+      try {
+        if (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.callbacks instanceof Map) {
+          var _get = window.__TAURI_INTERNALS__.callbacks.get;
+          window.__TAURI_INTERNALS__.callbacks.get = function(id) {
+            if (this.has(id)) return _get.call(this, id);
+            return function() {};
+          };
+        }
+      } catch (e) {}
+    })();
+  </script>
+  
+  <!-- CSS Dosyaları -->
+  <link rel="stylesheet" href="css/base.css?v=6.6">
+  <link rel="stylesheet" href="css/components.css?v=6.6">
+  <link rel="stylesheet" href="css/master.css?v=6.6">
+  <link rel="stylesheet" href="css/display.css?v=6.6">
+</head>
+<body>
+
+  <!-- ========================================== -->
+  <!-- MASTER ROLÜ: REJİ OPERATÖR KONSOLU         -->
+  <!-- ========================================== -->
+  <div id="master-root" class="app-container">
+    
+    <!-- [1] MENÜ & ARAÇ ÇUBUĞU -->
+    <header class="top-toolbar-container">
+      
+      <!-- Windows Başlık Çubuğu -->
+      <div class="window-titlebar">
+        <div class="window-title">
+          <span>cc</span>
+          <span>Ceremony & Stage Presentation Manager</span>
+        </div>
+      </div>
+
+
+      <!-- Araç Simgeleri ve Büyük Reji Butonları -->
+      <div class="action-toolbar-row">
+        <div class="quick-icons-group">
+          <button class="tool-btn" id="btn-about-quick" title="Hakkında ve Sistem Bilgisi">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>Hakkında</span>
+          </button>
+          <button class="tool-btn" id="btn-settings-quick" title="Sahne ve Arka Plan Ayarları">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span>Arkaplan</span>
+          </button>
+          <button class="tool-btn" id="btn-logo-settings" title="Logo Ayarları — PNG logoları ekran üzerine yerleştir">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"></circle><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path></svg>
+            <span>Logo</span>
+          </button>
+          <button class="tool-btn" id="btn-app-settings" title="Genel Uygulama Ayarları (Kilit, Uyanık Kalma)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Ayarlar</span>
+          </button>
+          <button class="tool-btn" id="btn-open-display" title="GKGD P2.5 LED Panel Çıktısını Başlat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            <span>Ekran</span>
+          </button>
+        </div>
+
+        <!-- [5] HIZLI KONTROLLER (ÜST ÇUBUK ORTA BÖLÜM) -->
+        <div class="header-playback-cluster" id="header-playback-controls">
+          <button class="header-ctrl-btn" id="btn-prev" title="Önceki Medya (Sol Ok)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+            <span>ÖNCEKİ</span>
+          </button>
+
+          <button class="header-ctrl-btn header-ctrl-play" id="btn-play-pause" title="Oynat / Duraklat (Boşluk Tuşu)">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span>OYNAT</span>
+          </button>
+
+          <button class="header-ctrl-btn header-ctrl-stop" id="btn-stop" title="Yayını Durdur">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>
+            <span>DURDUR</span>
+          </button>
+
+          <button class="header-ctrl-btn" id="btn-next" title="Sonraki Medya (Sağ Ok)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+            <span>SONRAKİ</span>
+          </button>
+        </div>
+
+        <!-- Tema, Ses ve Karart (yayın kontrolleri orta kümede) -->
+        <div class="reji-master-buttons">
+          <button id="btn-mute" class="header-ctrl-btn" title="Sesi kapat (M)">
+            <span id="btn-mute-icon" style="font-size:15px; line-height:1;">🔊</span>
+            <span id="btn-mute-label">SES</span>
+          </button>
+          <button id="btn-theme" class="header-ctrl-btn" title="Açık / koyu tema (T)">
+            <span id="btn-theme-icon" style="font-size:15px; line-height:1;">☀️</span>
+            <span id="btn-theme-label">TEMA</span>
+          </button>
+          <button id="btn-panic" class="header-ctrl-btn header-ctrl-blackout" title="Yayını anında karartır (P / Esc)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 0 0 18z"/></svg>
+            <span>KARART</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ANA REJİ ÇALIŞMA ALANI -->
+    <main class="workspace-grid">
+      
+      <!-- ÜST SATIR (3 SÜTUN) -->
+      <div class="upper-row-grid">
+        
+        <!-- [2] VERİTABANI & AKIŞ LİSTESİ (Sıralama, Tut-Bırak, Klasör & Dosya Ekleme) -->
+        <section class="reji-box">
+          <div class="reji-box-header">
+            <div class="box-title">Akış Listesi</div>
+            <span id="playlist-count-label" class="badge" style="background:var(--panel-border); color:var(--text-muted); font-size:10px;">0 Medya</span>
+          </div>
+
+          <!-- Hızlı Ekleme Butonları & Tören Kaydet / Aç (Tek Satır) -->
+          <div style="display: flex; gap: 4px; padding: 5px 6px; background: var(--bg-secondary); border-bottom: 1px solid var(--panel-border); align-items: center;">
+            <button id="btn-add-folder" class="btn" style="flex:1; min-width:0; padding: 5px 2px; font-size: 10px; background:var(--bg-hover); border-color:var(--panel-border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Klasör Ekle: Bir klasör dolusu medyayı tek seferde akışa ekleyin">
+              📁 Klasör
+            </button>
+            <button id="btn-add-files" class="btn btn-primary" style="flex:1; min-width:0; padding: 5px 2px; font-size: 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Dosya Ekle: Medya dosyaları seçin">
+              ➕ Dosya
+            </button>
+            <button id="btn-save-ceremony" class="btn" style="flex:1; min-width:0; padding: 5px 2px; font-size: 10px; background:var(--bg-tertiary); border-color:var(--panel-border); color:var(--accent-blue); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Tören Kaydet: Mevcut akış listesini ve ayarları tören dosyası (.toren) olarak kaydet">
+              💾 Kaydet
+            </button>
+            <button id="btn-open-ceremony" class="btn" style="flex:1; min-width:0; padding: 5px 2px; font-size: 10px; background:var(--bg-tertiary); border-color:var(--panel-border); color:var(--accent-green); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Tören Aç: Daha önce kaydedilmiş tören dosyasını (.toren) geri yükle">
+              📂 Aç
+            </button>
+            <input type="file" id="folder-input" webkitdirectory directory multiple style="display: none;">
+            <input type="file" id="file-input" multiple accept="image/*,video/*,audio/*,.webp,.jpg,.jpeg,.png,.gif,.bmp,.svg,.jfif,.avif,.mp4,.webm,.mov,.mkv,.avi,.mp3,.wav,.ogg,.m4a,.flac,.pptx,.ppt,.pdf" style="display: none;">
+            <input type="file" id="ceremony-file-input" accept=".toren,.json" style="display: none;">
+          </div>
+          
+          <!-- Dinamik Tut-Bırak Akış Listesi -->
+          <div class="playlist-db-list" id="playlist-db-container" style="flex:1; overflow-y:auto; padding:6px; display:flex; flex-direction:column; gap:4px;">
+            <!-- Dinamik Medya Sırası Buraya Gelecek (Sürüklenebilir) -->
+          </div>
+
+          <!-- Alt Çubuk (Akış Playlist, Ayar & Çöp Kutusu) -->
+          <div class="box-bottom-bar" style="justify-content: flex-end;">
+            <div class="bottom-actions" style="display:flex; align-items:center; gap:8px;">
+              <button class="bottom-btn" id="btn-delete-item" title="Seçili Öğeyi Sil" style="font-size: 14px;">🗑️</button>
+              <button class="bottom-btn" id="btn-clear-all" title="Tüm Listeyi Temizle" style="font-size: 10px; color:var(--accent-red);">✕</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- DİKEY AYIRICI (SOL / ORTA) -->
+        <div class="splitter-v" id="splitter-v1" title="Genişliği Ayarlamak İçin Sürükleyin"></div>
+
+        <!-- [3] MEDYA / AKIŞ İÇERİĞİ (ÖN GÖRÜNÜM) -->
+        <section class="reji-box">
+          <div class="reji-box-header">
+            <div class="box-title">MEDYA / AKIŞ İÇERİĞİ (ÖN GÖRÜNÜM)</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span id="preview-mode-badge" class="badge preview-mode-badge">ÖN HAZIRLIK</span>
+              <button type="button" id="btn-publish-preview" class="btn btn-primary" title="Ön görünümdeki seçili medyayı canlı LED ekrana ver (Enter)" style="display:flex; align-items:center; gap:5px; padding:3px 10px; font-size:10px; font-weight:800; white-space:nowrap;">
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <span>YAYINLA</span>
+              </button>
+              <button type="button" id="btn-save-pdf" class="btn" title="Sunumun tüm sayfalarını tek PDF olarak Masaüstü'ne kaydet" style="display:none; align-items:center; gap:5px; padding:3px 10px; font-size:10px; font-weight:800; white-space:nowrap; background:var(--btn-info-bg); border:1px solid var(--accent-blue); color:var(--accent-blue);">
+                <span>📄 PDF</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Büyük Detaylı Ön Görünüm Sahnesi + Yanında Ön İzleme Mix Katmanları (2 Sütun) -->
+          <div id="media-flow-list" class="media-preview-staging-area">
+            <div class="preview-stage-col" id="preview-stage-col">
+              <!-- Ön Görünüm Ekranı ve Medya Kontrolleri JavaScript ile çizilir -->
+            </div>
+            <div class="live-mix-strip-wrapper preview-mix-strip-wrapper" id="preview-mix-strip-wrapper">
+              <div class="live-mix-header">
+                <span class="live-mix-strip-label preview-mix-label" title="Seçili medya yayına alındığında mixlenecek katmanlar (Ön hazırlıkta aktif/pasif yapabilirsiniz)">ÖN İZLEME MİX</span>
+                <span id="preview-mix-count" class="badge" style="background:var(--panel-border); color:var(--text-muted); font-size:9px; padding:1px 5px;">0 Aktif</span>
+              </div>
+              <div class="live-mix-strip" id="preview-mix-strip">
+                <span class="live-mix-empty">Ön görünüm için bir medya seçin</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DİKEY AYIRICI (ORTA / SAĞ) -->
+        <div class="splitter-v" id="splitter-v2" title="Genişliği Ayarlamak İçin Sürükleyin"></div>
+
+        <!-- [4] CANLI ÖNİZLEME (LIVE VIEW) -->
+        <section class="reji-box">
+          <div class="reji-box-header">
+            <div class="box-title">Canlı ön izleme</div>
+            <span class="badge" style="background: rgba(56,161,105,0.2); color:var(--accent-green); font-size:10px;">LED ÇIKTISI</span>
+          </div>
+          
+          <div class="live-views-container">
+            <!-- Tek Ekran: LED Ekran Canlı Önizlemesi -->
+            <div class="monitor-sub-box single-monitor">
+              <div class="monitor-screen-wrapper">
+                <div class="monitor-screen-inner" id="preview-iframe-wrapper">
+                  <!-- index.html?screen=1&preview=1 buraya yüklenecektir -->
+                </div>
+              </div>
+
+              <!-- Canlı Akış Süresi ve İleri-Geri Sarılabilir Timeline Scrubber -->
+              <div class="live-scrubber-box" id="live-scrubber-box">
+                <div class="scrubber-header-row">
+                  <div class="scrubber-title">
+                    <span class="scrub-dot">●</span>
+                    <span id="scrubber-label-text">Akış Süresi</span>
+                  </div>
+                  <div class="scrubber-times">
+                    <span class="time-current" id="scrubber-cur-time">00:00</span>
+                    <span class="time-divider">/</span>
+                    <span class="time-total" id="scrubber-total-time">00:00</span>
+                  </div>
+                </div>
+                <div class="scrubber-track-container" id="scrubber-track-container">
+                  <input type="range" id="scrubber-slider" class="scrubber-range-input" min="0" max="100" step="0.1" value="0" title="İleri / Geri Sarmak İçin Sürükleyin veya Tıklayın">
+                  <div class="scrubber-fill" id="scrubber-fill"></div>
+                  <div class="scrubber-tooltip" id="scrubber-tooltip">00:00</div>
+                </div>
+              </div>
+
+
+              <!-- Canlıda Mixlenen / Yayındaki Aktif Katmanlar Listesi (Dikey) -->
+              <div class="live-mix-strip-wrapper" id="live-mix-strip-wrapper">
+                <div class="live-mix-header">
+                  <span class="live-mix-strip-label" title="Şu an canlı yayında aynı anda mixlenen ve gösterilen katmanlar">MİX KATMANLARI</span>
+                  <span id="live-mix-count" class="badge" style="background:var(--panel-border); color:var(--text-muted); font-size:9px; padding:1px 5px;">0 Aktif</span>
+                </div>
+                <div class="live-mix-strip" id="live-mix-strip">
+                  <span class="live-mix-empty">Yayında aktif katman yok</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- YATAY AYIRICI (ÜST SATIR / ALT SATIR) -->
+      <div class="splitter-h" id="splitter-h" title="Yüksekliği Ayarlamak İçin Sürükleyin"></div>
+
+      <!-- ALT SATIR (2 BÖLGE: ARKA PLAN / LOOP + GEÇİŞ) -->
+      <div class="lower-row-grid">
+
+        <!-- [6] ARKA PLAN / SES KONTROLLERİ -->
+        <section class="reji-box">
+          <div class="reji-box-header">
+            <div class="box-title">Loop Video</div>
+          </div>
+
+          <div class="bg-audio-controls-box">
+            <!-- Loop Opaklık Ayarı (Mouse Wheel Hassas Ayar) ve Yayınla / Kapat Butonları (Kompakt Tek Satır) -->
+            <div class="loop-row" style="margin-bottom: 2px;">
+              <div class="loop-actions" style="align-items: center; gap: 8px;">
+                <div class="audio-slider-row" id="loop-opacity-row" style="flex: 1 1 auto; min-width: 0; margin: 0; padding: 0; display: flex; align-items: center; gap: 6px; user-select: none;" title="Fare tekerleğini yuvarlayarak opaklığı hassas (%1) ayarlayabilirsiniz">
+                  <div class="slider-header-label" style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                    <span>Opaklık</span>
+                    <span id="opacity-val-display" style="font-family: monospace; color: var(--accent-blue); font-weight: 700; min-width: 32px; font-size: 11px;">%35</span>
+                  </div>
+                  <div class="audio-slider-wrapper" style="flex: 1; min-width: 50px;">
+                    <input type="range" id="slider-loop-opacity" min="0" max="100" step="1" value="35" style="flex: 1; cursor: pointer;" title="Opaklık: %0 - %100 (Fare tekerleğiyle hassas ayar)">
+                  </div>
+                </div>
+                <div class="loop-btn-group" style="flex-shrink: 0; display: flex; align-items: center; gap: 4px;">
+                  <button type="button" id="btn-loop-bw" class="btn btn-loop-bw" title="Siyah-Beyaz Filtre: Loop videoyu monokrom (siyah/beyaz) yapar" style="padding: 2px 7px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--panel-border); background: var(--bg-secondary); color: var(--text-muted); cursor: pointer; border-radius: 4px; transition: all 0.15s ease;">
+                    <span style="font-size: 12px; line-height: 1;">🌓</span>
+                    <span>S/B</span>
+                  </button>
+                  <div class="icon-checkbox" id="btn-check-loop" title="Seçili Loop Videoyu Canlı Yayına Ver / Onayla">✓ <span>YAYINLA</span></div>
+                  <button type="button" id="btn-disable-all-loop" class="btn" title="Loop Videoyu Tamamen Kapat (Ön Görünüm ve Canlı)">
+                    <span class="loop-btn-icon">🚫</span><span>KAPAT</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Loop Video Küçük Önizleme Kartları (loop klasöründen taranır) -->
+            <div class="loop-thumbs-scroll" id="loop-thumbs-container">
+              <!-- JS tarafından loop klasöründeki videolar render edilir -->
+            </div>
+
+            <!-- Seçili medyaya bağlı Loop Video (Tören öncesi hazırlık için + / −) -->
+            <div class="beat-media-row loop-media-row">
+              <select id="select-media-loop" class="loop-select-dropdown" title="Seçili medya yayına girdiğinde oynatılacak loop video">
+                <option value="">— Medya loop'u yok —</option>
+              </select>
+              <button type="button" id="btn-media-loop-toggle" class="beat-icon-btn beat-add-btn" title="Seçili loop videoyu medyaya ekle (+)">+</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SES KÜTÜPHANESİ (BEAT) -->
+        <section class="reji-box">
+          <div class="reji-box-header">
+            <div class="box-title">Loop Ses</div>
+            <span id="beat-count-badge" class="badge" style="background:var(--panel-border); color:var(--text-muted); font-size:10px;">0 ses</span>
+          </div>
+
+          <div class="beat-library-box">
+
+            <!-- Loop Ses Zaman İlerleme & Sarma Çubuğu -->
+            <div class="beat-scrubber-row" id="beat-scrubber-row" style="display:flex; align-items:center; gap:8px; padding:4px 8px; background:var(--bg-secondary); border:1px solid var(--panel-border); border-radius:6px; margin-bottom:2px;">
+              <span class="preview-media-time is-current" id="beat-cur-time" style="font-size:11px; min-width:34px; color:var(--accent-blue);">00:00</span>
+              <input type="range" class="preview-media-seek" id="beat-seek-slider" min="0" max="100" step="0.1" value="0" title="Müziği İleri / Geri Sar (Fare Tekerleği ile Sarılabilir)" style="flex:1; cursor:pointer;" disabled>
+              <span class="preview-media-time" id="beat-dur-time" style="font-size:11px; min-width:34px; text-align:right;">00:00</span>
+            </div>
+
+            <!-- Ses listesi -->
+            <div class="beat-list" id="beat-list">
+              <div class="beat-empty">Beat klasörü okunuyor…</div>
+            </div>
+
+            <!-- Seçili medyaya bağlı ses -->
+            <div class="beat-media-row">
+              <select id="select-media-audio" class="loop-select-dropdown" title="Seçili görsel/video/sunum yayına girdiğinde çalacak ses">
+                <option value="">— Medya sesi yok —</option>
+              </select>
+              <button type="button" id="btn-media-audio-play" class="beat-icon-btn" title="Medyaya bağlı sesi dinle">▶</button>
+              <button type="button" id="btn-beat-stop" class="beat-icon-btn beat-add-btn" title="Seçili müziği medyaya ekle">+</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- GEÇİŞ (FADE) -->
+        <section class="reji-box">
+          <div class="reji-box-header">
+            <div class="box-title">GEÇİŞ (FADE)</div>
+          </div>
+
+          <div class="fade-controls-box">
+            <div class="fade-slider-row">
+              <div class="fade-header-label">
+                <span>Geçiş Hızı</span>
+                <span id="fade-speed-display" class="fade-speed-value">400 ms</span>
+              </div>
+              <input type="range" id="slider-fade-speed" min="0" max="2000" step="50" value="400">
+            </div>
+
+            <div class="fade-buttons-col" id="fade-mode-group">
+              <button class="btn-fade-action" id="btn-fade-cut" data-mode="cut" title="Sıfır gecikme ile anında geçiş">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Cut</span>
+                  <span class="fade-mode-sub">(Anında)</span>
+                </span>
+                <span class="fade-row-test-btn" title="cut geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-cross" data-mode="crossfade" title="İki medya arası yumuşak erime geçişi">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Crossfade</span>
+                  <span class="fade-mode-sub">(Yumuşak)</span>
+                </span>
+                <span class="fade-row-test-btn" title="crossfade geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-black" data-mode="fadeblack" title="Sahneyi karartıp yeni içerikle aydınlatır">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Fade Black</span>
+                  <span class="fade-mode-sub">(Karartarak)</span>
+                </span>
+                <span class="fade-row-test-btn" title="fadeblack geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-cards" data-mode="cards" title="Dağılan kartlar efektiyle 3D geçiş">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Cards</span>
+                  <span class="fade-mode-sub">(Dağılan Kart)</span>
+                </span>
+                <span class="fade-row-test-btn" title="cards geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-zoom" data-mode="zoom" title="Derinlik ve lens bulanıklığı ile sinematik zoom">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Zoom Blur</span>
+                  <span class="fade-mode-sub">(Odaklanarak)</span>
+                </span>
+                <span class="fade-row-test-btn" title="zoom geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-slide" data-mode="slide" title="Sahneye sağdan kayarak iten geçiş">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Slide Push</span>
+                  <span class="fade-mode-sub">(Kaydırma)</span>
+                </span>
+                <span class="fade-row-test-btn" title="slide geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-sandstorm" data-mode="sandstorm" title="Rüzgarla dağılan kum taneleri ve fırtına efekti">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Kum Fırtınası</span>
+                  <span class="fade-mode-sub">(Sandstorm)</span>
+                </span>
+                <span class="fade-row-test-btn" title="sandstorm geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-explode" data-mode="explode" title="3D parçalara ayrılarak patlayan geçiş">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Patlama</span>
+                  <span class="fade-mode-sub">(Explode)</span>
+                </span>
+                <span class="fade-row-test-btn" title="explode geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-vortex" data-mode="vortex" title="Merkeze doğru dönerek çekilen girdap">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Girdap</span>
+                  <span class="fade-mode-sub">(Vortex)</span>
+                </span>
+                <span class="fade-row-test-btn" title="vortex geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-fall" data-mode="fall" title="Yerçekimi ile aşağı dökülen parçalar">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Dökülme</span>
+                  <span class="fade-mode-sub">(Fall)</span>
+                </span>
+                <span class="fade-row-test-btn" title="fall geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-wave" data-mode="wave" title="Akışkan su ve sinüs dalgaları">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Dalga</span>
+                  <span class="fade-mode-sub">(Wave)</span>
+                </span>
+                <span class="fade-row-test-btn" title="wave geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-thanos" data-mode="thanos" title="Toz ve küle dönüşerek uçuşan parçacıklar">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Thanos</span>
+                  <span class="fade-mode-sub">(Kül Dağılma)</span>
+                </span>
+                <span class="fade-row-test-btn" title="thanos geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-blinds" data-mode="blinds" title="Dönen 3D panjur çıtaları">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Panjur</span>
+                  <span class="fade-mode-sub">(Blinds)</span>
+                </span>
+                <span class="fade-row-test-btn" title="blinds geçişini yayında dene">⚡ Dene</span>
+              </button>
+
+              <button class="btn-fade-action" id="btn-fade-mosaic" data-mode="mosaic" title="Dinamik mozaik karoları geçişi">
+                <span class="fade-mode-check">●</span>
+                <span class="fade-mode-text">
+                  <span class="fade-mode-name">Mozaik</span>
+                  <span class="fade-mode-sub">(Mosaic)</span>
+                </span>
+                <span class="fade-row-test-btn" title="mosaic geçişini yayında dene">⚡ Dene</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- [10] EKRAN &amp; ÖLÇEK -->
+        <section class="reji-box">
+          <div class="reji-box-header">
+            <div class="box-title">EKRAN &amp; ÖLÇEK</div>
+            <span id="led-size-badge" class="badge" style="background:var(--panel-border); color:var(--text-muted); font-size:10px; font-family:monospace;">1536×768</span>
+          </div>
+
+          <div class="screen-settings-box" id="screen-settings-box">
+
+            <!-- Hazır çözünürlükler -->
+            <div class="scr-row">
+              <span class="scr-label">Çözünürlük</span>
+              <select id="select-led-preset" class="scr-input">
+                <option value="">— Hazır seç —</option>
+                <option value="1536x768">1536 × 768  (LED P2.5)</option>
+                <option value="1920x1080">1920 × 1080  (Full HD)</option>
+                <option value="1280x720">1280 × 720  (HD)</option>
+                <option value="1024x576">1024 × 576  (HD küçük)</option>
+                <option value="2560x1440">2560 × 1440  (QHD)</option>
+                <option value="3840x2160">3840 × 2160  (4K)</option>
+                <option value="512x256">512 × 256  (Küçük panel)</option>
+                <option value="768x768">768 × 768  (Kare)</option>
+                <option value="1024x768">1024 × 768  (4:3)</option>
+                <option value="1080x1920">1080 × 1920  (Dikey)</option>
+              </select>
+            </div>
+
+            <!-- Serbest genişlik / yükseklik -->
+            <div class="scr-row">
+              <span class="scr-label">Genişlik × Yükseklik</span>
+              <div class="scr-pair">
+                <input type="number" id="input-led-w" class="scr-input" min="64" max="16384" step="1" value="1536" title="Genişlik (piksel)">
+                <span class="scr-x">×</span>
+                <input type="number" id="input-led-h" class="scr-input" min="64" max="16384" step="1" value="768" title="Yükseklik (piksel)">
+              </div>
+            </div>
+
+            <!-- İçerik ölçekleme -->
+            <div class="scr-row scr-row-col">
+              <span class="scr-label">İçerik Ölçeği</span>
+              <div class="scr-seg" id="scr-scale-group">
+                <button type="button" data-scale="contain" title="Tamamı görünür, kenarlarda boşluk kalabilir">Sığdır</button>
+                <button type="button" data-scale="cover" title="Ekranı doldurur, kenarlardan kırpar">Doldur</button>
+                <button type="button" data-scale="fill" title="Ekrana yayar, oranı bozabilir">Esnet</button>
+                <button type="button" data-scale="original" title="Akıştaki medyanın kendi orijinal boyutunu ve oranını uygular">Orijinal</button>
+              </div>
+            </div>
+
+            <!-- Boşluk doldurma -->
+            <div class="scr-row scr-row-col" id="scr-fill-row">
+              <span class="scr-label">Kenar Boşluğu Doldurma</span>
+              <div class="scr-seg" id="scr-fill-group">
+                <button type="button" data-fill="blank" title="Boşlukları siyah zeminle doldurur (Blanking Fill)">Blanking</button>
+                <button type="button" data-fill="blur" title="Boşlukları içeriğin bulanık kopyasıyla doldurur (Pillarbox Blur)">Blur Fill</button>
+                <button type="button" data-fill="color" title="Seçilen düz renkle doldurur">Düz Renk</button>
+              </div>
+            </div>
+
+            <!-- Bulanıklık şiddeti (yalnızca Blur Fill) -->
+            <div class="scr-row" id="scr-blur-row" style="display:none;">
+              <span class="scr-label">Bulanıklık</span>
+              <div class="scr-pair">
+                <input type="range" id="input-blur-amount" min="0" max="60" step="2" value="28" style="flex:1; min-width:0;">
+                <span id="blur-amount-val" class="scr-val">28 px</span>
+              </div>
+            </div>
+
+            <!-- Düz renk seçimi (yalnızca Düz Renk) -->
+            <div class="scr-row" id="scr-color-row" style="display:none;">
+              <span class="scr-label">Zemin Rengi</span>
+              <div class="scr-pair">
+                <input type="color" id="input-fill-color" value="#000000" style="width:42px; height:22px; padding:0; border:1px solid var(--panel-border); border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">
+                <span id="fill-color-val" class="scr-val">#000000</span>
+              </div>
+            </div>
+
+            <div class="scr-row">
+              <span class="scr-label">Oran</span>
+              <span id="led-ratio-label" class="scr-val">2.00 : 1</span>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- [11] ANA SES (DİKEY FADER) -->
+        <section class="reji-box">
+          <div class="reji-box-header">
+            <div class="box-title">ANA SES</div>
+            <button type="button" id="btn-fader-mute" class="header-ctrl-btn btn-fader-mute" title="Sesi Ağır Kapat / Aç (750 ms Ağır Fade)" style="padding: 2px 7px; font-size: 13px; line-height: 1; border-radius: 4px; border: 1px solid var(--panel-border); background: var(--bg-secondary); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s ease;">
+                <span id="btn-fader-mute-icon">🔊</span>
+              </button>
+          </div>
+
+          <div class="master-fader-box" id="master-fader-box">
+            <div class="fader-stage-row">
+              <div class="fader-eq-col" title="Sol Kanal (L) Ses Seviyesi">
+                <div class="fader-eq-bar" id="fader-eq-left">
+                  <div class="fader-eq-fill" id="fader-eq-fill-l"></div>
+                </div>
+                <span class="fader-eq-label">L</span>
+              </div>
+
+              <div class="fader-rail" id="master-fader-rail" role="slider" tabindex="0"
+                   aria-label="Ana ses seviyesi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"
+                   aria-orientation="vertical"
+                   title="Sürükleyin, fare tekerleği ile kaydırın veya ↑ ↓ tuşlarını kullanın">
+                <div class="fader-ticks" aria-hidden="true"></div>
+                <div class="fader-track" aria-hidden="true"></div>
+                <div class="fader-cap" id="master-fader-cap" aria-hidden="true"></div>
+              </div>
+
+              <div class="fader-eq-col" title="Sağ Kanal (R) Ses Seviyesi">
+                <div class="fader-eq-bar" id="fader-eq-right">
+                  <div class="fader-eq-fill" id="fader-eq-fill-r"></div>
+                </div>
+                <span class="fader-eq-label">R</span>
+              </div>
+            </div>
+
+            <div class="fader-meter">
+              <span class="fader-pct" id="val-fader-master">%100</span>
+              <span class="fader-unit">ANA SES</span>
+            </div>
+          </div>
+
+
+        </section>
+
+      </div>
+
+    </main>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- TÖREN VE SAHNE AYARLARI MODALI             -->
+  <!-- ========================================== -->
+  <div id="modal-ceremony-settings" class="modal-backdrop" style="display:none;">
+    <div class="modal-dialog-box">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-blue);">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Tören ve Sahne Ayarları</span>
+        </div>
+        <button class="modal-close-btn" id="btn-close-settings-modal">✕</button>
+      </div>
+
+      <div class="modal-body-content">
+        <!-- 1. Bölüm: Varsayılan Tören Sahne Resmi (Bekleme & Ara Görseli) -->
+        <div class="settings-group">
+          <div class="settings-group-header">
+            <span class="settings-group-title">1. Varsayılan Tören Sahne Resmi (Bekleme / Ara Görseli)</span>
+            <span class="settings-group-desc">Video, şiir veya müzik bittiğinde ya da duraklamalarda sahnede otomatik olarak bu görsel gösterilir.</span>
+          </div>
+
+          <div class="poster-preview-row">
+            <div class="poster-preview-box" id="settings-poster-preview">
+              <img id="settings-poster-img" src="" alt="Varsayılan Tören Sahnesi" style="display:none;">
+            </div>
+            <div class="poster-actions-col">
+              <button class="btn btn-primary" id="btn-upload-ceremony-poster" style="font-size:12px; padding:8px 14px;">
+                🖼️ Varsayılan Tören Resmini Seç / Yükle
+              </button>
+              <input type="file" id="ceremony-poster-file-input" accept="image/*,.webp,.jpg,.jpeg,.png,.svg" style="display:none;">
+              <small style="color:var(--text-muted); font-size:11px;">Okul logonuz, 29 Ekim, 10 Kasım veya resmi tören sahne afişi.</small>
+
+              <label class="settings-checkbox-card" style="margin-top:10px; display:flex; align-items:center; gap:8px; background:var(--bg-tertiary); padding:8px 12px; border-radius:6px; border:1px solid var(--panel-border); cursor:pointer;">
+                <input type="checkbox" id="chk-auto-default-poster" checked style="cursor:pointer; accent-color:var(--accent-blue); width:16px; height:16px;">
+                <div style="display:flex; flex-direction:column;">
+                  <span style="font-size:12px; font-weight:600; color:var(--text-main);">Duraklamalarda ve Medya Bittiğinde Tören Resmine Dön</span>
+                  <span style="font-size:10px; color:var(--text-muted);">Herhangi bir video, şiir veya müzik bittiğinde ekranda siyah boşluk yerine bu sahne resmi kalır.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Bölüm: Ses & Müzik Çalma Resmi (Ses Görseli) -->
+        <div class="settings-group">
+          <div class="settings-group-header">
+            <span class="settings-group-title">2. Ses / Müzik Çalma Resmi (Ses Görseli)</span>
+            <span class="settings-group-desc">Ses veya müzik parçaları çalınırken ekrana yansıtılacak özel görsel. İnternetten indirilen dosyalardaki alakasız görseller asla çıkmaz!</span>
+          </div>
+
+          <div class="poster-preview-row">
+            <div class="poster-preview-box" id="settings-audio-poster-preview">
+              <img id="settings-audio-poster-img" src="" alt="Ses Sahne Görseli" style="display:none;">
+            </div>
+            <div class="poster-actions-col">
+              <button class="btn btn-primary" id="btn-upload-audio-poster" style="font-size:12px; padding:8px 14px; background:var(--accent-blue);">
+                🎵 Ses/Müzik Özel Resmini Seç / Yükle
+              </button>
+              <input type="file" id="audio-poster-file-input" accept="image/*,.webp,.jpg,.jpeg,.png,.svg" style="display:none;">
+              <small style="color:var(--text-muted); font-size:11px;">Müzik veya fon sesi çalarken sahnede görünecek görsel (örnek: Tören Korosu afişi, Müzik teması).</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Bölüm: Ses Çalarken Ekran Seçeneği -->
+        <div class="settings-group">
+          <div class="settings-group-header">
+            <span class="settings-group-title">3. Ses Çalarken Ekranda Ne Gösterilsin?</span>
+            <span class="settings-group-desc">Ses hoparlörden çalarken LED ekranda hangi temanın yansıtılacağını belirleyin:</span>
+          </div>
+
+          <div class="audio-mode-selector">
+            <label class="audio-mode-card active" data-mode="audio_poster">
+              <input type="radio" name="audio-screen-mode" value="audio_poster" checked>
+              <div class="audio-mode-info">
+                <span class="audio-mode-name">🎵 Özel Ses Resmini Göster (Önerilen)</span>
+                <span class="audio-mode-sub">Ses çalarken 2. adımda seçtiğiniz özel ses görseli ekrana gelir.</span>
+              </div>
+            </label>
+
+            <label class="audio-mode-card" data-mode="default_poster">
+              <input type="radio" name="audio-screen-mode" value="default_poster">
+              <div class="audio-mode-info">
+                <span class="audio-mode-name">🇹🇷 Varsayılan Tören Resmini Göster</span>
+                <span class="audio-mode-sub">1. adımdaki varsayılan tören resmi / Türk Bayrağı ekranda kalır.</span>
+              </div>
+            </label>
+
+            <label class="audio-mode-card" data-mode="loop">
+              <input type="radio" name="audio-screen-mode" value="loop">
+              <div class="audio-mode-info">
+                <span class="audio-mode-name">🎬 Sadece Loop Video Göster</span>
+                <span class="audio-mode-sub">Ses çalarken arka plandaki bayrak/tören loop videosu ekranda akar.</span>
+
+                <!-- Ses çalarken arkada akacak loop video seçimi -->
+                <div class="audio-loop-picker" id="audio-loop-picker">
+                  <div class="audio-loop-picker-row">
+                    <span class="audio-loop-picker-label">🎬 Loop video</span>
+                    <select id="select-audio-loop" class="scr-input" title="Ses çalarken arkada oynayacak loop videosu">
+                      <option value="">— Varsayılan loop (arka plan seçimi) —</option>
+                    </select>
+                  </div>
+
+                  <div class="audio-loop-picker-row audio-loop-picker-actions">
+                    <button type="button" id="btn-add-audio-loop" class="btn btn-primary" title="Bilgisayardan video ekle">
+                      ➕ Video Ekle
+                    </button>
+                    <button type="button" id="btn-clear-audio-loop" class="btn" title="Loop seçimini temizle">
+                      ✕ Temizle
+                    </button>
+                  </div>
+
+                  <input type="file" id="audio-loop-file-input" accept="video/*,.mp4,.webm,.mov,.mkv,.m4v" style="display:none;">
+
+                  <div class="audio-loop-picker-note" id="audio-loop-picker-note"></div>
+                </div>
+              </div>
+            </label>
+
+            <label class="audio-mode-card" data-mode="blackout">
+              <input type="radio" name="audio-screen-mode" value="blackout">
+              <div class="audio-mode-info">
+                <span class="audio-mode-name">⬛ Siyah Ekran (Karart)</span>
+                <span class="audio-mode-sub">LED ekran tamamen kararır, sahnede konuşmacı veya koro aydınlatılır.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn" id="btn-cancel-settings" style="background:var(--bg-hover); border-color:var(--panel-border);">Vazgeç</button>
+        <button class="btn btn-primary" id="btn-save-ceremony-settings" style="background:var(--accent-blue-hover); font-weight:700;">💾 Ayarları Kaydet ve Uygula</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- LOGO AYARLARI MODALI                       -->
+  <!-- ========================================== -->
+  <div id="modal-logo-settings" class="modal-backdrop" style="display:none;">
+    <div class="modal-dialog-box logo-modal-box">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-blue);">
+            <circle cx="12" cy="8" r="6"></circle>
+            <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>
+          </svg>
+          <span>Logo Ayarları</span>
+        </div>
+        <button class="modal-close-btn" id="btn-close-logo-modal">✕</button>
+      </div>
+
+      <div class="modal-body-content">
+        <!-- 1. Bölüm: Ekran oranında yerleştirme alanı -->
+        <div class="settings-group">
+          <div class="settings-group-header">
+            <span class="settings-group-title">1. Ekran Üzerine Yerleştir</span>
+            <span class="settings-group-desc">
+              Aşağıdaki dörtgen, [9] EKRAN &amp; ÖLÇEK bölümündeki çözünürlükle aynı orandadır.
+              Logoları fareyle sürükleyerek istediğiniz yere taşıyın; köşesinden çekerek büyütün.
+            </span>
+          </div>
+
+          <div class="logo-stage-wrap" id="logo-stage-wrap">
+            <div class="logo-stage" id="logo-stage">
+              <div class="logo-stage-hint" id="logo-stage-hint">PNG logo ekleyin, sonra buraya sürükleyin</div>
+            </div>
+          </div>
+          <div class="logo-stage-caption">
+            <span id="logo-stage-size-label">1536 × 768</span>
+            <span>Ekran oranı: <strong id="logo-stage-ratio-label">2.00 : 1</strong></span>
+          </div>
+        </div>
+
+        <!-- 2. Bölüm: İki logo yuvası -->
+        <div class="settings-group">
+          <div class="settings-group-header">
+            <span class="settings-group-title">2. Logolar (PNG)</span>
+            <span class="settings-group-desc">
+              İki ayrı PNG logo ekleyebilirsiniz. Boyut, şeffaflık ve konum her logo için ayrı ayarlanır
+              ve kaydedilir; LED ekranda canlı olarak görünür.
+            </span>
+          </div>
+          <div class="logo-toolbar" id="logo-toolbar">
+            <button type="button" class="btn btn-logo-tool" id="btn-logo-align-h" title="Her iki logonun dikey merkezlerini eşitleyerek aynı yatay hizaya getirir">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="2 2" stroke="currentColor" opacity="0.85"></line>
+                <rect x="4" y="6" width="6" height="12" rx="1.5"></rect>
+                <rect x="14" y="8" width="6" height="8" rx="1.5"></rect>
+              </svg>
+              <span>Merkezleri Yatayda Hizala</span>
+            </button>
+            <button type="button" class="btn btn-logo-tool" id="btn-logo-toggle-link" title="Logoları birbirine bağlar (Ayna Modu): Birini hareket ettirdiğinizde diğeri ekranın merkezine göre ayna gibi simetrik hareket eder">
+              <svg class="icon-link" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+              <span id="btn-logo-link-text">Logoları Bağla (Ayna Modu)</span>
+            </button>
+          </div>
+          <div class="logo-cards-container" id="logo-cards-container"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn" id="btn-logo-clear-all" style="background:var(--bg-hover); border-color:var(--panel-border);">Tüm Logoları Temizle</button>
+        <button class="btn btn-primary" id="btn-close-logo-modal-footer" style="background:var(--accent-blue-hover); font-weight:700;">Tamam</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- GENEL UYGULAMA AYARLARI MODALI             -->
+  <!-- ========================================== -->
+  <div id="modal-app-settings" class="modal-backdrop" style="display:none;">
+    <div class="modal-dialog-box" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-blue);">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Uygulama Ayarları</span>
+        </div>
+        <button class="modal-close-btn" id="btn-close-app-settings-modal">✕</button>
+      </div>
+
+      <div class="modal-body-content" style="padding: 18px 20px; display:flex; flex-direction:column; gap:14px;">
+        
+        <!-- 1. Güç Yönetimi / Uyanık Kalma (Caffeine Modu) -->
+        <label class="settings-checkbox-card" style="display:flex; align-items:flex-start; gap:12px; background:var(--bg-tertiary); padding:14px; border-radius:8px; border:1px solid var(--panel-border); cursor:pointer;">
+          <input type="checkbox" id="chk-setting-keep-awake" checked style="cursor:pointer; accent-color:var(--accent-blue); width:18px; height:18px; margin-top:2px;">
+          <div style="display:flex; flex-direction:column; gap:3px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:13px; font-weight:700; color:var(--text-main);">☕ Sürekli Uyanık Kal (Caffeine Modu)</span>
+              <span style="font-size:10px; background:#10b98126; color:#10b981; padding:1px 6px; border-radius:4px; font-weight:700;">ÖNERİLEN</span>
+            </div>
+            <span style="font-size:11px; color:var(--text-muted); line-height:1.4;">
+              Uygulama açık olduğu sürece bilgisayarın uyku / bekleme moduna geçmesini ve ekran koruyucunun devreye girmesini engeller. Tören ve sahne sunumlarında ekranın beklenmedik şekilde kararmasını önler.
+            </span>
+          </div>
+        </label>
+
+        <!-- 2. Panel Düzeni ve Kilit -->
+        <label class="settings-checkbox-card" style="display:flex; align-items:flex-start; gap:12px; background:var(--bg-tertiary); padding:14px; border-radius:8px; border:1px solid var(--panel-border); cursor:pointer;">
+          <input type="checkbox" id="chk-setting-lock-layout" style="cursor:pointer; accent-color:var(--accent-blue); width:18px; height:18px; margin-top:2px;">
+          <div style="display:flex; flex-direction:column; gap:3px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:13px; font-weight:700; color:var(--text-main);">🔒 Panel Ayraçlarını Kilitle</span>
+              <span id="badge-setting-lock-status" style="font-size:10px; background:var(--bg-card); color:var(--text-dim); padding:1px 6px; border-radius:4px; font-weight:600;">Serbest</span>
+            </div>
+            <span style="font-size:11px; color:var(--text-muted); line-height:1.4;">
+              Sol ve sağ panel ayraçlarının sürüklenmesini kilitler ve mevcut boyutları sabitler. (Ayrıca herhangi bir ayraca çift tıklayarak da kilidi doğrudan açıp kapatabilirsiniz).
+            </span>
+          </div>
+        </label>
+        <!-- 3. Güncellemeler (GitHub Releases) -->
+        <div class="settings-update-card" style="display:flex; flex-direction:column; gap:10px; background:var(--bg-tertiary); padding:14px; border-radius:8px; border:1px solid var(--panel-border);">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:13px; font-weight:700; color:var(--text-main);">🚀 Otomatik Güncelleme (GitHub)</span>
+              <span id="badge-update-version" style="font-size:10px; background:var(--bg-card); color:var(--accent-blue); padding:1px 6px; border-radius:4px; font-weight:700;">v2.0.0</span>
+            </div>
+            <button id="btn-check-update" class="btn btn-secondary" style="font-size:11px; padding:4px 10px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+              <span id="btn-check-update-icon">🔄</span>
+              <span id="btn-check-update-text">Güncellemeleri Denetle</span>
+            </button>
+          </div>
+
+          <div id="update-status-msg" style="font-size:11px; color:var(--text-muted); line-height:1.4;">
+            GitHub Releases üzerinden yeni sürümleri otomatik denetler ve doğrudan günceller.
+          </div>
+
+          <!-- Yeni Sürüm Bulunduğunda Görünecek Alan -->
+          <div id="update-available-box" style="display:none; flex-direction:column; gap:8px; background:rgba(30, 144, 255, 0.08); border:1px solid rgba(30, 144, 255, 0.3); padding:10px; border-radius:6px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <span id="update-new-tag" style="font-size:12px; font-weight:700; color:var(--accent-blue);">Yeni Sürüm: v2.0.1</span>
+              <span id="update-asset-size" style="font-size:10px; color:var(--text-dim);">~95 MB</span>
+            </div>
+            <div id="update-notes-preview" style="font-size:11px; color:var(--text-main); max-height:85px; overflow-y:auto; white-space:pre-wrap; background:rgba(0,0,0,0.25); padding:6px 8px; border-radius:4px; line-height:1.4;"></div>
+            <div style="display:flex; align-items:center; gap:10px; margin-top:2px; flex-wrap:wrap;">
+              <button id="btn-do-update" class="btn btn-primary" style="font-size:11px; padding:6px 14px; background:#10b981; border-color:#059669; font-weight:700; cursor:pointer;">
+                ⬇️ Şimdi İndir ve Güncelle
+              </button>
+              <a id="link-github-release" href="#" target="_blank" style="font-size:11px; color:var(--accent-blue); text-decoration:none; cursor:pointer;">
+                GitHub Sürüm Sayfasını Aç ↗
+              </a>
+            </div>
+            <div id="update-download-progress-box" style="display:none; flex-direction:column; gap:5px; margin-top:4px;">
+              <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted);">
+                <span id="update-progress-label">Güncelleme paketi indiriliyor...</span>
+                <span id="update-progress-percent">Lütfen bekleyin</span>
+              </div>
+              <div style="width:100%; height:6px; background:var(--bg-card); border-radius:3px; overflow:hidden; position:relative;">
+                <div id="update-progress-bar" style="width:100%; height:100%; background:linear-gradient(90deg, #10b981, #3b82f6); border-radius:3px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+      </div>
+
+      <div class="modal-footer" style="padding:12px 20px; display:flex; justify-content:flex-end;">
+        <button class="btn btn-primary" id="btn-close-app-settings-footer" style="background:var(--accent-blue-hover); font-weight:700; min-width:80px;">Tamam</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- AÇILIŞ / HAKKINDA BİLGİ POPUP'I (SPLASH)  -->
+  <!-- ========================================== -->
+  <div id="modal-welcome-splash" class="modal-backdrop welcome-modal-backdrop" style="display:none;">
+    <div class="welcome-card-container">
+      <!-- Üst Kenarla Kesişen Dairesel MEB Logosu -->
+      <div class="welcome-top-badge">
+        <img src="assets/welcome_top_logo.png" alt="T.C. Millî Eğitim Bakanlığı" class="welcome-badge-img">
+      </div>
+
+      <div class="welcome-card-inner">
+        <!-- Başlık Bölümü -->
+        <div class="welcome-header-section">
+          <h1 class="welcome-gov-title">T.C. MİLLÎ EĞİTİM BAKANLIĞI</h1>
+          <h2 class="welcome-prov-title">MARDİN İL MİLLÎ EĞİTİM MÜDÜRLÜĞÜ</h2>
+        </div>
+
+        <div class="welcome-divider-line"></div>
+
+        <!-- Orta Gövde: Solda Logo, Ortada Metin, Sağda Logo -->
+        <div class="welcome-body-grid">
+          <!-- Sol: Mardin İl MEM Logosu (Light/Dark tema uyumlu) -->
+          <a href="https://mardin.meb.gov.tr/" target="_blank" class="welcome-squircle-box" title="Mardin İl Millî Eğitim Müdürlüğü Web Sitesi" data-url="https://mardin.meb.gov.tr/">
+            <img src="assets/welcome_mem_light.png" alt="Mardin İl Millî Eğitim Müdürlüğü" class="welcome-squircle-img welcome-mem-img-light">
+            <img src="assets/welcome_mem_dark.png" alt="Mardin İl Millî Eğitim Müdürlüğü" class="welcome-squircle-img welcome-mem-img-dark">
+          </a>
+
+          <!-- Orta Tipografi -->
+          <div class="welcome-center-text">
+            <p class="welcome-text-top">Bu uygulama, Mardin İl Millî Eğitim Müdürlüğü adına</p>
+            <p class="welcome-text-author">SERCAN ÖZDEMİR</p>
+            <p class="welcome-text-bottom">tarafından geliştirilmiştir.</p>
+          </div>
+
+          <!-- Sağ: Sercan Özdemir Logosu -->
+          <a href="https://github.com/BeNKaYS" target="_blank" class="welcome-squircle-box" title="Sercan Özdemir (GitHub)" data-url="https://github.com/BeNKaYS">
+            <img src="assets/welcome_sercan.png" alt="Sercan Özdemir" class="welcome-squircle-img">
+          </a>
+        </div>
+
+        <!-- Desteklenen Türler & Bilgilendirme Notu -->
+        <div class="welcome-media-info-box">
+          <div class="welcome-info-title">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>Desteklenen Medya Formatları &amp; Önemli İpuçları</span>
+          </div>
+
+          <div class="welcome-formats-chips">
+            <span class="fmt-chip"><strong>Görsel:</strong> PNG, JPG, WEBP, SVG, GIF</span>
+            <span class="fmt-chip"><strong>Video:</strong> MP4, WEBM, MOV, MKV</span>
+            <span class="fmt-chip"><strong>Ses:</strong> MP3, WAV, M4A, OGG</span>
+            <span class="fmt-chip"><strong>Sunum:</strong> PDF, PPTX</span>
+          </div>
+
+          <ul class="welcome-info-tips">
+            <li><strong>Sunum Önerisi:</strong> PowerPoint (.pptx) sunumlarının sisteme eklenmeden önce <strong>PDF formatına dönüştürülmesi</strong> daha hızlı, hatasız ve yüksek kaliteli akış sağlar.</li>
+            <li><strong>Arka Plan &amp; Müzik:</strong> Canlı sahne arkası için <strong>Loop videoları</strong> ve tören anları için <strong>Beat &amp; Fon müzikleri</strong> eklenebilir.</li>
+          </ul>
+        </div>
+
+        <!-- Alt Buton: Sisteme Giriş Yap -->
+        <div class="welcome-action-row">
+          <button type="button" class="welcome-submit-btn" id="btn-close-welcome-modal">
+            Sisteme Giriş Yap
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- DISPLAY ROLÜ: GKGD P2.5 LED EKRAN ÇIKTISI  -->
+  <!-- ========================================== -->
+  <div id="display-root" class="display-root-container" style="display: none;">
+    <!-- DisplayRenderer tarafından dinamik yönetilir -->
+  </div>
+
+
+  <!-- Sunum & Doküman Kütüphaneleri (PPTX & PDF Offline Desteği) -->
+  <script src="lib/jszip.min.js"></script>
+  <script src="lib/pdf.min.js"></script>
+  <script src="js/pptx-renderer.js?v=5.3"></script>
+  <script src="js/pdf-writer.js?v=5.3"></script>
+
+  <!-- Standalone & Offline Ready JavaScript Bundle -->
+  <script src="js/bundle.js?v=6.7"></script>
+</body>
+</html>

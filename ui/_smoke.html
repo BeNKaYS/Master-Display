@@ -1,0 +1,125 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>smoke</title>
+<style>body{margin:0;background:#0b0b0b;color:#ddd;font:12px monospace}
+pre{white-space:pre-wrap;padding:8px}</style></head>
+<body><pre id="o">running…</pre>
+<iframe id="fr" src="index.html?v=smoke1" style="width:1200px;height:820px;border:1px solid #333"></iframe>
+<script>
+const o = document.getElementById('o'), fr = document.getElementById('fr');
+let out = [];
+const log = (m) => out.push(m);
+const flush = () => { o.textContent = out.join('\n'); };
+
+const MISSING = ['pv-audio-toggle','md-sync-toast','splitter-v3','splitter-v4','btn-broadcast-live',
+'playback-timer','playback-progress-bar','btn-mute','btn-mute-icon','btn-mute-label','select-media-audio',
+'btn-loop-audio-play','btn-media-audio-play','btn-beat-stop','btn-audio-master','btn-audio-master-icon',
+'btn-audio-master-text','audio-state-badge','slider-master-vol','slider-media-vol','slider-loop-vol',
+'slider-fx-vol','val-master-vol','val-media-vol','val-loop-vol','val-fx-vol','btn-audio-test',
+'audio-route-info','beat-search','pv-audio-seek','pv-audio-cur','pv-audio-dur','pv-audio-label'];
+
+fr.onload = () => setTimeout(() => {
+  const d = fr.contentDocument, w = fr.contentWindow;
+  const errs = [];
+  w.addEventListener('error', (e) => errs.push('ERR: ' + (e.message || e)));
+  w.addEventListener('unhandledrejection', (e) => errs.push('PROMISE: ' + e.reason));
+  const oldErr = w.console.error;
+  w.console.error = (...a) => { errs.push('console.error: ' + a.map(String).join(' ')); oldErr.apply(w.console, a); };
+
+  // 1) Eksik DOM
+  const missing = MISSING.filter(id => !d.getElementById(id));
+  log('[1] Eksik DOM elemanlari: ' + missing.length + '/' + MISSING.length);
+  if (missing.length) log('    ' + missing.join(', '));
+
+  // 2) Buton envanteri
+  const btns = [...d.querySelectorAll('button, [role="button"], .icon-checkbox, .btn')];
+  log('[2] Etkilesimli oge sayisi: ' + btns.length);
+
+  // 3) Modal testleri
+  const modalTest = (btnId, modalId, closeSel) => {
+    try {
+      const b = d.getElementById(btnId); const m = d.getElementById(modalId);
+      if (!b || !m) { log('    ✗ ' + modalId + ' (btn/modal yok)'); return; }
+      b.click();
+      const opened = w.getComputedStyle(m).display !== 'none';
+      const close = m.querySelector(closeSel);
+      if (close) close.click();
+      const closed = w.getComputedStyle(m).display === 'none';
+      log('    ' + (opened && closed ? '✓' : '✗') + ' ' + modalId + ' acildi=' + opened + ' kapandi=' + closed);
+    } catch (e) { log('    ✗ ' + modalId + ' hata: ' + e.message); }
+  };
+  log('[3] Modallar:');
+  modalTest('btn-settings-quick', 'modal-ceremony-settings', '#btn-close-settings-modal');
+  modalTest('menu-settings', 'modal-ceremony-settings', '#btn-close-settings-modal');
+  modalTest('btn-logo-settings', 'modal-logo-settings', '#btn-close-logo-modal');
+  modalTest('menu-logo', 'modal-logo-settings', '#btn-close-logo-modal');
+
+  // 4) Ekran ayarlari
+  log('[4] Ekran & Olcek:');
+  const wIn = d.getElementById('input-led-w'), hIn = d.getElementById('input-led-h');
+  const app = w.__MasterApp;
+  const before = app.appState.getState().ledConfig;
+  wIn.value = '1920'; wIn.dispatchEvent(new Event('change', { bubbles: true }));
+  hIn.value = '1080'; hIn.dispatchEvent(new Event('change', { bubbles: true }));
+  setTimeout(() => {
+    const c = app.appState.getState().ledConfig;
+    log('    ' + (c.width === 1920 && c.height === 1080 ? '✓' : '✗') + ' cozunurluk ' + c.width + 'x' + c.height);
+    log('    badge=' + d.getElementById('led-size-badge').textContent);
+    // scale buttons
+    d.querySelector('#scr-scale-group button[data-scale="cover"]').click();
+    setTimeout(() => {
+      log('    ' + (app.appState.getState().ledConfig.scaleMode === 'cover' ? '✓' : '✗') + ' olcek=cover');
+      d.querySelector('#scr-scale-group button[d-scope]') || null;
+      // 5) Gecis
+      log('[5] Gecis:');
+      d.getElementById('btn-fade-black').click();
+      log('    ' + (app.appState.getState().transition.type === 'fadeblack' ? '✓' : '✗') + ' tur=' + app.appState.getState().transition.type);
+      const sl = d.getElementById('slider-fade-speed');
+      sl.value = '1000'; sl.dispatchEvent(new Event('input', { bubbles: true }));
+      log('    duration=' + app.appState.getState().transition.duration + ' label=' + d.getElementById('fade-speed-display').textContent);
+
+      // 6) Beat panel
+      log('[6] Beat panel:');
+      const sel = d.getElementById('select-loop-audio');
+      log('    secenek=' + sel.options.length + ' placeholder="' + (sel.options[0] ? sel.options[0].textContent.trim() : '-') + '"');
+      const pub = d.getElementById('btn-beat-publish'), kap = d.getElementById('btn-beat-disable-all');
+      const r1 = pub.getBoundingClientRect(), r2 = kap.getBoundingClientRect();
+      log('    buton boyutu ' + Math.round(r1.width) + 'x' + Math.round(r1.height) + ' / ' + Math.round(r2.width) + 'x' + Math.round(r2.height) + (Math.abs(r1.width-r2.width) < 2 && Math.abs(r1.height-r2.height) < 1 ? ' ✓' : ' ✗'));
+
+      // 7) Loop panel
+      log('[7] Loop panel:');
+      const thumbs = d.getElementById('loop-thumbs-container');
+      const cs = w.getComputedStyle(thumbs);
+      log('    grid=' + cs.display + ' sutun=' + cs.gridTemplateColumns.split(' ').length + ' kart=' + thumbs.querySelectorAll('.loop-card-thumb').length);
+      const lp = d.getElementById('btn-check-loop'), lk = d.getElementById('btn-disable-all-loop');
+      const l1 = lp.getBoundingClientRect(), l2 = lk.getBoundingClientRect();
+      log('    buton boyutu ' + Math.round(l1.width) + 'x' + Math.round(l1.height) + ' / ' + Math.round(l2.width) + 'x' + Math.round(l2.height) + (Math.abs(l1.width-l2.width) < 2 && Math.abs(l1.height-l2.height) < 1 ? ' ✓' : ' ✗'));
+
+      // 8) Fader
+      log('[8] Ana ses fader:');
+      const rail = d.getElementById('master-fader-rail');
+      const app2 = app.appState;
+      app2.setVolume('master', 0.5);
+      setTimeout(() => {
+        log('    masterVolume=' + app2.getState().audio.masterVolume + ' gosterge=' + d.getElementById('val-fader-master').textContent + ' aria=' + rail.getAttribute('aria-valuenow'));
+        d.getElementById('btn-fader-mute').click();
+        setTimeout(() => {
+          log('    mute=' + app2.getState().audio.muted + ' badge=' + d.getElementById('fader-mute-badge').textContent);
+          d.getElementById('btn-fader-mute').click();
+          // 9) Durdur
+          log('[9] Durdur:');
+          d.getElementById('btn-stop').click();
+          setTimeout(() => {
+            const s = app2.getState();
+            log('    playback=' + s.playbackState + ' loopVideo=' + !!s.globalBackground.enabled + ' beat=' + (s.globalBackground.audioSrc || 'null'));
+            // 10) hatalar
+            log('[10] Runtime hatalari: ' + errs.length);
+            errs.slice(0, 12).forEach(e => log('    ' + e));
+            log('DONE');
+            flush();
+          }, 500);
+        }, 300);
+      }, 300);
+    }, 300);
+  }, 300);
+}, 2200);
+</script></body></html>

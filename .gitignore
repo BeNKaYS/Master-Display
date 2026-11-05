@@ -1,0 +1,31 @@
+# Rust / Cargo build artifacts
+/src-tauri/target/
+**/*.rs.bk
+
+# Inno Setup output & installers
+/Setup/
+*.exe
+*.msi
+*.zip
+*.pdb
+
+# Local / OS / Editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+.vscode/
+.idea/
+
+# Agent / AI local workspace caches
+.agents/
+.gemini/
+.claude/
+.openchamber/
+.trail/
+graphify-out/
+
+# Temporary / Scratch scripts
+scratch/
+__pycache__/
+*.pyc
