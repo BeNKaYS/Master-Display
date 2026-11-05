@@ -10948,6 +10948,180 @@
           });
         });
       }
+
+      // ============================================================
+      // --- LİSANS YÖNETİMİ & 3 AYLIK BAŞLANGIÇ LİSANSI ---
+      // ============================================================
+      const licenseManager = {
+        info: null,
+        modal: document.getElementById('modal-license'),
+        badgeText: document.getElementById('badge-license-text'),
+        btnQuick: document.getElementById('btn-license-quick'),
+        btnCloseModal: document.getElementById('btn-close-license-modal'),
+        btnCloseFooter: document.getElementById('btn-close-license-footer'),
+        displayStatus: document.getElementById('lic-display-status'),
+        displayDetail: document.getElementById('lic-display-detail'),
+        displayBadge: document.getElementById('lic-display-badge'),
+        machineInput: document.getElementById('lic-machine-id-input'),
+        btnCopyMid: document.getElementById('btn-copy-machine-id'),
+        btnCopyMidText: document.getElementById('btn-copy-machine-id-text'),
+        keyInput: document.getElementById('lic-key-input'),
+        btnSubmit: document.getElementById('btn-submit-license-key'),
+        errorEl: document.getElementById('lic-activation-error'),
+        successEl: document.getElementById('lic-activation-success'),
+
+        async init() {
+          this.bindEvents();
+          await this.checkLicense();
+        },
+
+        bindEvents() {
+          this.btnQuick?.addEventListener('click', () => this.openModal());
+          this.btnCloseModal?.addEventListener('click', () => this.closeModal());
+          this.btnCloseFooter?.addEventListener('click', () => this.closeModal());
+          this.modal?.addEventListener('click', (e) => {
+            if (e.target === this.modal && this.info?.is_valid) {
+              this.closeModal();
+            }
+          });
+
+          this.btnCopyMid?.addEventListener('click', () => {
+            if (!this.machineInput) return;
+            navigator.clipboard.writeText(this.machineInput.value).then(() => {
+              if (this.btnCopyMidText) this.btnCopyMidText.textContent = 'Kopyalandı!';
+              setTimeout(() => {
+                if (this.btnCopyMidText) this.btnCopyMidText.textContent = 'Kopyala';
+              }, 2000);
+            });
+          });
+
+          this.btnSubmit?.addEventListener('click', () => this.submitKey());
+        },
+
+        async checkLicense() {
+          try {
+            if (window.__TAURI__?.core?.invoke) {
+              this.info = await window.__TAURI__.core.invoke('get_license_info');
+            } else {
+              this.info = {
+                is_valid: true,
+                status: 'trial_active',
+                machine_id: 'MD-WEB-DEMO-0001',
+                days_left: 90,
+                expiry_date: '2026-08-04',
+                owner: 'Deneme Kullanıcısı',
+                license_type: '3 Aylık Başlangıç Denemesi',
+                message: '3 Aylık Deneme Sürümü Aktif (90 gün kaldı)'
+              };
+            }
+            this.updateUI();
+          } catch (e) {
+            console.error('Lisans denetim hatası:', e);
+          }
+        },
+
+        updateUI() {
+          if (!this.info) return;
+
+          if (this.machineInput) {
+            this.machineInput.value = this.info.machine_id;
+          }
+
+          if (this.badgeText) {
+            if (this.info.is_valid) {
+              this.badgeText.textContent = `Lisans (${this.info.days_left}g)`;
+              this.badgeText.style.color = this.info.days_left <= 7 ? '#f59e0b' : '#10b981';
+            } else {
+              this.badgeText.textContent = 'Süresi Doldu!';
+              this.badgeText.style.color = '#ef4444';
+            }
+          }
+
+          if (this.displayStatus) {
+            this.displayStatus.textContent = this.info.message;
+            this.displayStatus.style.color = this.info.is_valid ? '#10b981' : '#ef4444';
+          }
+
+          if (this.displayDetail) {
+            this.displayDetail.textContent = `Bitiş: ${this.info.expiry_date} • Sahip: ${this.info.owner}`;
+          }
+
+          if (this.displayBadge) {
+            this.displayBadge.textContent = this.info.is_valid ? 'Aktif' : 'Süresi Doldu';
+            this.displayBadge.style.color = this.info.is_valid ? '#10b981' : '#ef4444';
+            this.displayBadge.style.background = this.info.is_valid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+            this.displayBadge.style.borderColor = this.info.is_valid ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)';
+          }
+
+          if (!this.info.is_valid) {
+            if (this.btnCloseModal) this.btnCloseModal.style.display = 'none';
+            if (this.btnCloseFooter) this.btnCloseFooter.style.display = 'none';
+            this.openModal();
+          } else {
+            if (this.btnCloseModal) this.btnCloseModal.style.display = '';
+            if (this.btnCloseFooter) this.btnCloseFooter.style.display = '';
+          }
+        },
+
+        openModal() {
+          if (this.modal) this.modal.style.display = 'flex';
+          if (this.errorEl) this.errorEl.style.display = 'none';
+          if (this.successEl) this.successEl.style.display = 'none';
+        },
+
+        closeModal() {
+          if (!this.info?.is_valid) return;
+          if (this.modal) this.modal.style.display = 'none';
+        },
+
+        async submitKey() {
+          const key = this.keyInput?.value?.trim();
+          if (!key) {
+            if (this.errorEl) {
+              this.errorEl.textContent = 'Lütfen bir lisans anahtarı yapıştırın.';
+              this.errorEl.style.display = 'block';
+            }
+            return;
+          }
+
+          if (this.btnSubmit) {
+            this.btnSubmit.disabled = true;
+            this.btnSubmit.textContent = 'Doğrulanıyor...';
+          }
+          if (this.errorEl) this.errorEl.style.display = 'none';
+          if (this.successEl) this.successEl.style.display = 'none';
+
+          try {
+            if (window.__TAURI__?.core?.invoke) {
+              const res = await window.__TAURI__.core.invoke('activate_license', { licenseKey: key });
+              this.info = res;
+              if (this.successEl) {
+                this.successEl.textContent = `🎉 Tebrikler! ${res.message}`;
+                this.successEl.style.display = 'block';
+              }
+              if (this.keyInput) this.keyInput.value = '';
+              this.updateUI();
+              setTimeout(() => {
+                this.closeModal();
+              }, 2500);
+            } else {
+              throw new Error('Tauri çalışma ortamı bulunamadı');
+            }
+          } catch (err) {
+            if (this.errorEl) {
+              this.errorEl.textContent = 'Hata: ' + (err || 'Lisans doğrulanamadı');
+              this.errorEl.style.display = 'block';
+            }
+          } finally {
+            if (this.btnSubmit) {
+              this.btnSubmit.disabled = false;
+              this.btnSubmit.textContent = '🔑 Lisansı Etkinleştir / Uzat';
+            }
+          }
+        }
+      };
+
+      licenseManager.init();
     }
   });
 

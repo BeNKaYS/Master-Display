@@ -15,6 +15,8 @@
 use std::io::{Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
+mod license;
+
 use serde_json::Value;
 use tauri::ipc::{InvokeBody, Request};
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -830,6 +832,16 @@ fn download_and_install_update(app_handle: tauri::AppHandle, download_url: Strin
     Ok(())
 }
 
+#[tauri::command]
+fn get_license_info() -> license::LicenseInfo {
+    license::check_license()
+}
+
+#[tauri::command]
+fn activate_license(license_key: String) -> Result<license::LicenseInfo, String> {
+    license::activate(license_key)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     std::env::set_var(
@@ -875,7 +887,9 @@ pub fn run() {
             open_external_url,
             set_keep_awake,
             check_app_update,
-            download_and_install_update
+            download_and_install_update,
+            get_license_info,
+            activate_license
         ])
         .run(tauri::generate_context!())
         .expect("Master-Display çalıştırılırken hata oluştu");

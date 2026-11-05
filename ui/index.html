@@ -73,6 +73,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
             <span>Ekran</span>
           </button>
+          <button class="tool-btn" id="btn-license-quick" title="Lisans Durumu ve Süre Uzatma" style="border-left: 1px solid var(--panel-border); margin-left: 2px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <span id="badge-license-text" style="color:#10b981; font-weight:700;">Lisans</span>
+          </button>
         </div>
 
         <!-- [5] HIZLI KONTROLLER (ÜST ÇUBUK ORTA BÖLÜM) -->
@@ -1013,6 +1017,68 @@
     </div>
   </div>
 
+
+  <!-- [LİSANS YÖNETİMİ & AKTİVASYON MODALI] -->
+  <div id="modal-license" class="modal-backdrop" style="display:none; z-index:99999;">
+    <div class="modal-dialog" style="max-width:540px; width:92%; background:var(--bg-secondary); border-radius:12px; border:1px solid var(--panel-border); box-shadow:0 20px 50px rgba(0,0,0,0.6); overflow:hidden; display:flex; flex-direction:column;">
+      <div class="modal-header" style="background:var(--bg-primary); padding:16px 20px; border-bottom:1px solid var(--panel-border); display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:22px;">🛡️</span>
+          <div>
+            <h3 style="margin:0; font-size:15px; font-weight:700; color:var(--text-main);">Master-Display Lisans Yönetimi</h3>
+            <span style="font-size:11px; color:var(--text-muted);">Sürüm Yetkilendirme & Süre Takibi</span>
+          </div>
+        </div>
+        <button id="btn-close-license-modal" class="modal-close-btn" style="background:none; border:none; font-size:18px; color:var(--text-muted); cursor:pointer;">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:16px;">
+        <!-- Durum Özeti -->
+        <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-tertiary); padding:14px; border-radius:8px; border:1px solid var(--panel-border);">
+          <div>
+            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Mevcut Lisans Durumu</div>
+            <div id="lic-display-status" style="font-size:14px; font-weight:700; color:#10b981; margin-top:2px;">3 Aylık Deneme Sürümü Aktif</div>
+            <div id="lic-display-detail" style="font-size:11px; color:var(--text-dim); margin-top:2px;">Kalan Süre: 90 gün</div>
+          </div>
+          <span id="lic-display-badge" style="background:rgba(16, 185, 129, 0.15); color:#10b981; border:1px solid rgba(16, 185, 129, 0.3); padding:4px 10px; border-radius:6px; font-weight:700; font-size:12px;">Aktif</span>
+        </div>
+
+        <!-- Cihaz Kimliği (Makine ID) -->
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-main); display:flex; justify-content:space-between; align-items:center;">
+            <span>Bu Bilgisayarın Cihaz Kimliği (Hardware ID):</span>
+            <span style="font-size:10px; color:var(--text-dim); font-weight:normal;">Süre uzatımı için bu kodu iletin</span>
+          </label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="lic-machine-id-input" readonly value="MD-XXXX-XXXX-XXXX" style="flex:1; background:var(--bg-primary); border:1px solid var(--panel-border); color:var(--accent-blue); font-family:monospace; font-size:13px; font-weight:700; padding:8px 12px; border-radius:6px; outline:none;" />
+            <button type="button" id="btn-copy-machine-id" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:5px; padding:0 14px; font-size:12px; font-weight:600; cursor:pointer;">
+              <span>📋</span> <span id="btn-copy-machine-id-text">Kopyala</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Lisans Anahtarı Girme Alanı -->
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label style="font-size:12px; font-weight:700; color:var(--text-main);">
+            Lisans Anahtarı ile Süreyi Uzat / Etkinleştir:
+          </label>
+          <textarea id="lic-key-input" rows="3" placeholder="Yöneticinizden aldığınız MDLIC_... ile başlayan lisans kodunu buraya yapıştırın" style="width:100%; box-sizing:border-box; background:var(--bg-primary); border:1px solid var(--panel-border); color:var(--text-main); font-family:monospace; font-size:11px; padding:8px; border-radius:6px; resize:none; outline:none;"></textarea>
+          <div id="lic-activation-error" style="display:none; font-size:11px; color:#ef4444; font-weight:600;"></div>
+          <div id="lic-activation-success" style="display:none; font-size:11px; color:#10b981; font-weight:600;"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding:12px 20px; background:var(--bg-primary); border-top:1px solid var(--panel-border); display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:11px; color:var(--text-muted);">Master-Display v2.0 • Güvenli Lisanslama</span>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-secondary" id="btn-close-license-footer" style="font-size:12px; padding:6px 14px; cursor:pointer;">Kapat</button>
+          <button type="button" class="btn btn-primary" id="btn-submit-license-key" style="background:#10b981; border-color:#059669; font-size:12px; font-weight:700; padding:6px 18px; cursor:pointer;">
+            🔑 Lisansı Etkinleştir / Uzat
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ========================================== -->
   <!-- DISPLAY ROLÜ: GKGD P2.5 LED EKRAN ÇIKTISI  -->
