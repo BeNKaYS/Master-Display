@@ -73,10 +73,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
             <span>Ekran</span>
           </button>
-          <button class="tool-btn" id="btn-license-quick" title="Lisans Durumu ve Süre Uzatma" style="border-left: 1px solid var(--panel-border); margin-left: 2px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-            <span id="badge-license-text" style="color:#10b981; font-weight:700;">Lisans</span>
-          </button>
+
         </div>
 
         <!-- [5] HIZLI KONTROLLER (ÜST ÇUBUK ORTA BÖLÜM) -->
@@ -934,6 +931,22 @@
           </div>
         </div>
 
+        <!-- 4. Lisanslama ve Yetkilendirme -->
+        <div class="settings-license-card" style="display:flex; flex-direction:column; gap:10px; background:var(--bg-tertiary); padding:14px; border-radius:8px; border:1px solid var(--panel-border);">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:13px; font-weight:700; color:var(--text-main);">🛡️ Lisans Yönetimi</span>
+              <span id="settings-lic-badge" style="font-size:10px; background:rgba(16, 185, 129, 0.15); color:#10b981; padding:1px 6px; border-radius:4px; font-weight:700;">Aktif</span>
+            </div>
+            <button type="button" id="btn-open-license-from-settings" class="btn btn-secondary" style="font-size:11px; padding:4px 10px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+              <span>🔑</span>
+              <span>Lisansı Yönet / Uzat</span>
+            </button>
+          </div>
+          <div id="settings-lic-summary" style="font-size:11px; color:var(--text-muted); line-height:1.4;">
+            3 Aylık Deneme Sürümü Aktif • Bitiş: YYYY-MM-DD
+          </div>
+        </div>
 
       </div>
 

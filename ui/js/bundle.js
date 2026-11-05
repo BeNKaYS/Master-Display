@@ -10957,6 +10957,9 @@
         modal: document.getElementById('modal-license'),
         badgeText: document.getElementById('badge-license-text'),
         btnQuick: document.getElementById('btn-license-quick'),
+        btnOpenFromSettings: document.getElementById('btn-open-license-from-settings'),
+        settingsLicBadge: document.getElementById('settings-lic-badge'),
+        settingsLicSummary: document.getElementById('settings-lic-summary'),
         btnCloseModal: document.getElementById('btn-close-license-modal'),
         btnCloseFooter: document.getElementById('btn-close-license-footer'),
         displayStatus: document.getElementById('lic-display-status'),
@@ -10977,6 +10980,7 @@
 
         bindEvents() {
           this.btnQuick?.addEventListener('click', () => this.openModal());
+          this.btnOpenFromSettings?.addEventListener('click', () => this.openModal());
           this.btnCloseModal?.addEventListener('click', () => this.closeModal());
           this.btnCloseFooter?.addEventListener('click', () => this.closeModal());
           this.modal?.addEventListener('click', (e) => {
@@ -11051,6 +11055,16 @@
             this.displayBadge.style.color = this.info.is_valid ? '#10b981' : '#ef4444';
             this.displayBadge.style.background = this.info.is_valid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
             this.displayBadge.style.borderColor = this.info.is_valid ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)';
+          }
+
+          if (this.settingsLicBadge) {
+            this.settingsLicBadge.textContent = this.info.is_valid ? 'Aktif' : 'Süresi Doldu';
+            this.settingsLicBadge.style.color = this.info.is_valid ? '#10b981' : '#ef4444';
+            this.settingsLicBadge.style.background = this.info.is_valid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+          }
+
+          if (this.settingsLicSummary) {
+            this.settingsLicSummary.textContent = `${this.info.message} • Bitiş: ${this.info.expiry_date} • Cihaz: ${this.info.machine_id}`;
           }
 
           if (!this.info.is_valid) {
