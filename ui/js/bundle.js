@@ -1962,7 +1962,30 @@
         const shouldPlay = canPlay && !muted && bgAudioEnabled && !audioItemIsLive;
         this.loopAudio.muted = false;
         if (shouldPlay) {
+          this._targetLoopVol = targetVol;
           MD.fadeAudio(this.loopAudio, targetVol, 450);
+          if (!this._loopAudioFadeAttached && this.loopAudio) {
+            this._loopAudioFadeAttached = true;
+            this.loopAudio.addEventListener('timeupdate', () => {
+              if (!this.loopAudio || this.loopAudio.paused || this.loopAudio._fadeAnimId) return;
+              const dur = this.loopAudio.duration;
+              const cur = this.loopAudio.currentTime;
+              if (isFinite(dur) && dur > 4) {
+                const fadeDur = Math.min(3.5, dur * 0.25);
+                const remaining = dur - cur;
+                const target = this._targetLoopVol !== undefined ? this._targetLoopVol : 0.8;
+                if (remaining <= fadeDur && remaining >= 0) {
+                  const ratio = Math.max(0, remaining / fadeDur);
+                  this.loopAudio.volume = Math.max(0, Math.min(1, target * (ratio * ratio)));
+                } else if (cur <= 1.0) {
+                  const inRatio = Math.max(0.1, cur / 1.0);
+                  this.loopAudio.volume = Math.max(0, Math.min(1, target * inRatio));
+                } else {
+                  this.loopAudio.volume = target;
+                }
+              }
+            });
+          }
         } else {
           MD.fadeAudio(this.loopAudio, 0, 400, () => {
             if (!this.loopAudio.paused) try { this.loopAudio.pause(); } catch (e) {}
@@ -6803,13 +6826,16 @@
       }
 
       try {
-        const s = this.appState.getState();
-        const muted = Boolean(s.audio?.muted);
-        const master = s.audio?.masterVolume ?? 1;
+        const getBaseVol = () => {
+          const s = this.appState.getState();
+          if (s.audio?.muted) return 0;
+          const m = s.audio?.masterVolume ?? 1;
+          return Math.max(0, Math.min(1, 0.85 * MD.audioGain(m)));
+        };
 
         this._auditionEl = new Audio(src);
         this._auditionEl.preload = 'auto';
-        this._auditionEl.volume = muted ? 0 : Math.max(0, Math.min(1, 0.85 * MD.audioGain(master)));
+        this._auditionEl.volume = 0; // Yumuşak fade-in ile başlayacak
 
         const slider = document.getElementById('beat-seek-slider');
         const curTime = document.getElementById('beat-cur-time');
@@ -6832,10 +6858,28 @@
         this._auditionEl.addEventListener('durationchange', updateDur);
         if (this._auditionEl.duration) updateDur();
 
-        this._auditionEl.addEventListener('timeupdate', () => {
+        // Parçanın bitimine doğru (son 3.5 sn) yumuşak fade-out hesaplama
+        const updateFadeAndProgress = () => {
           if (!this._auditionEl) return;
           const cur = this._auditionEl.currentTime;
           const dur = this._auditionEl.duration;
+
+          if (isFinite(dur) && dur > 0) {
+            // Son 3.5 saniyede (kısa dosyalarda %25) yumuşak fade-out
+            const fadeDur = Math.min(3.5, dur * 0.25);
+            const remaining = dur - cur;
+            const currentBase = getBaseVol();
+
+            if (remaining <= fadeDur && remaining >= 0) {
+              const ratio = Math.max(0, remaining / fadeDur);
+              // Karesel akustik yumuşatma eğrisi
+              const targetVol = currentBase * (ratio * ratio);
+              this._auditionEl.volume = Math.max(0, Math.min(1, targetVol));
+            } else if (!this._beatFadingStop && !this._auditionEl._fadeAnimId) {
+              this._auditionEl.volume = currentBase;
+            }
+          }
+
           if (curTime && (!slider || !slider._dragging)) {
             curTime.textContent = fmt(cur);
           }
@@ -6843,7 +6887,15 @@
             slider.value = String((cur / dur) * 100);
             slider.disabled = false;
           }
-        });
+        };
+
+        this._auditionEl.addEventListener('timeupdate', updateFadeAndProgress);
+
+        const fadeMonitor = () => {
+          if (!this._auditionEl || this._auditionEl.paused) return;
+          updateFadeAndProgress();
+          this._auditionRaf = requestAnimationFrame(fadeMonitor);
+        };
 
         this._auditionEl.addEventListener('error', () => {
           this._stopAllBeatSound();
@@ -6860,11 +6912,22 @@
         this._renderBeatList();
 
         const p = this._auditionEl.play();
-        if (p && typeof p.catch === 'function') {
-          p.catch(() => {
+        const startPlaybackWithFade = () => {
+          MD.fadeAudio(this._auditionEl, getBaseVol(), 250);
+          if (this._auditionRaf) cancelAnimationFrame(this._auditionRaf);
+          this._auditionRaf = requestAnimationFrame(fadeMonitor);
+        };
+
+        if (p && typeof p.then === 'function') {
+          p.then(startPlaybackWithFade).catch(() => {
             this._auditionEl.muted = false;
             const again = this._auditionEl.play();
-            if (again && again.catch) {
+            if (again && typeof again.then === 'function') {
+              again.then(startPlaybackWithFade).catch(() => {
+                this._beatPlayingSrc = null;
+                this._renderBeatList();
+              });
+            } else if (again && again.catch) {
               again.catch(() => {
                 this._beatPlayingSrc = null;
                 this._renderBeatList();
@@ -6881,6 +6944,10 @@
 
     /** Dinleme sesini tamamen kapatır ve kaynağını serbest bırakır. */
     _stopAllBeatSound() {
+      if (this._auditionRaf) {
+        cancelAnimationFrame(this._auditionRaf);
+        this._auditionRaf = null;
+      }
       if (this._auditionEl) {
         try {
           this._auditionEl.pause();
@@ -6891,6 +6958,7 @@
       }
       this._auditionEl = null;
       this._beatPlayingSrc = null;
+      this._beatFadingStop = false;
 
       const slider = document.getElementById('beat-seek-slider');
       const curTime = document.getElementById('beat-cur-time');
@@ -6908,11 +6976,35 @@
       }
     }
 
-    /** Listede çalan dinleme sesini durdurur. */
-    /** Listede çalan dinleme sesini durdurur (kaynağı serbest bırakır). */
+    /** Listede çalan dinleme sesini durdurur (yumuşak fade out ile, aniden kesilmez). */
     _stopBeatPlayback() {
-      this._stopAllBeatSound();
-      this._renderBeatList();
+      if (this._auditionRaf) {
+        cancelAnimationFrame(this._auditionRaf);
+        this._auditionRaf = null;
+      }
+      if (this._auditionEl && !this._auditionEl.paused && this._auditionEl.volume > 0.04) {
+        const el = this._auditionEl;
+        this._beatFadingStop = true;
+        this._beatPlayingSrc = null;
+        this._renderBeatList();
+
+        MD.fadeAudio(el, 0, 500, () => {
+          this._beatFadingStop = false;
+          if (this._auditionEl === el) {
+            this._stopAllBeatSound();
+          } else {
+            try {
+              el.pause();
+              el.currentTime = 0;
+              el.removeAttribute('src');
+              el.load();
+            } catch (e) {}
+          }
+        });
+      } else {
+        this._stopAllBeatSound();
+        this._renderBeatList();
+      }
     }
 
     /** Seçili medyaya Beat sesi bağlar (veya kaldırır). */
