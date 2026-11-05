@@ -7761,10 +7761,10 @@
       }
     }
 
-    /** ✓ düğmesinin içeriği (ikon + kısa etiket) — KAPAT düğmesiyle aynı boyutta kalır. */
+    /** ✓ düğmesinin içeriği (yalnızca kompakt ikon). */
     _setLoopPublishLabel(icon, label) {
       this.btnCheckLoop.innerHTML =
-        `<span class="loop-btn-icon">${icon}</span><span>${label}</span>`;
+        `<span class="loop-btn-icon" style="font-size:13px; font-weight:700;">${icon}</span>`;
     }
 
     /**
