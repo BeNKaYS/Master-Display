@@ -1,6 +1,6 @@
 #define MyAppName "Master-Display"
 #define MyAppFullTitle "Master-Display — Tören ve Sahne Reji Konsolu"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.0.1"
 #define MyAppPublisher "T.C. Millî Eğitim Bakanlığı - Mardin İl Millî Eğitim Müdürlüğü (Geliştirici: SERCAN ÖZDEMİR)"
 #define MyAppURL "https://mardin.meb.gov.tr/"
 #define MyAppDevURL "https://github.com/BeNKaYS"

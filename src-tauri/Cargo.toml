@@ -1,6 +1,6 @@
 [package]
 name = "master-display"
-version = "2.0.0"
+version = "2.0.1"
 description = "Tören ve Sahne Sunum Yönetim Uygulaması (Ceremony & Stage Presentation Manager)"
 authors = ["Master-Display"]
 edition = "2021"
