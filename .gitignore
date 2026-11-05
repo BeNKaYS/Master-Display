@@ -29,3 +29,10 @@ graphify-out/
 scratch/
 __pycache__/
 *.pyc
+
+# License generation tools & private keys (STRICTLY PRIVATE)
+tools/license-generator/
+license-vault/
+*_private_key*
+*.priv
+license.dat
