@@ -23,7 +23,7 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=..\Setup
 OutputBaseFilename=Master-Display_Kurulum_Setup
-SetupIconFile=assets\setup_icon.ico
+SetupIconFile=..\src-tauri\icons\icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 WizardStyle=modern
 WizardSizePercent=115,115
@@ -64,8 +64,8 @@ Type: filesandordirs; Name: "{userappdata}\com.masterdisplay.app"
 Source: "..\src-tauri\target\release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\src-tauri\icons\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "assets\welcome_card.bmp"; Flags: dontcopy
-Source: "..\Loop\01_Toren_Giris_ve_Karsilama\*"; DestDir: "{app}\loop\01_Toren_Giris_ve_Karsilama"; Flags: ignoreversion recursesubdirs createallsubdirs nocompression
-Source: "..\Beat\01_Toren_Giris_ve_Karsilama\*"; DestDir: "{app}\Beat\01_Toren_Giris_ve_Karsilama"; Flags: ignoreversion recursesubdirs createallsubdirs nocompression
+Source: "..\Loop\*"; DestDir: "{app}\loop"; Flags: ignoreversion recursesubdirs createallsubdirs nocompression
+Source: "..\Beat\*"; DestDir: "{app}\Beat"; Flags: ignoreversion recursesubdirs createallsubdirs nocompression
 Source: "..\t_Logo\*"; DestDir: "{app}\t_Logo"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
