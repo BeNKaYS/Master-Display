@@ -287,35 +287,174 @@ fn export_media_to_desktop(
 /// Küçük ve normal çerçeveli açılır: kullanıcı pencereyi istediği monitöre
 /// sürükler, sonra çift tıklayarak / F11 ile tam ekran yapar.
 /// (Laptoptaki testlerde zorla tam ekran açmak kullanışsızdı.)
-#[tauri::command]
-async fn open_display_window(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(existing) = app.get_webview_window("display") {
-        let _ = existing.show();
-        let _ = existing.unminimize();
-        let _ = existing.set_focus();
-        return Ok(());
+/// Ana pencerenin (`master`) bulunduğu ekran dışındaki ilk bağlı ekranı (2. ekran / LED) bulur.
+fn find_secondary_monitor(app: &tauri::AppHandle) -> (usize, Option<tauri::Monitor>) {
+    let monitors = match app.available_monitors() {
+        Ok(list) => list,
+        Err(_) => return (1, None),
+    };
+    let total = monitors.len();
+    if total < 2 {
+        return (total, None);
     }
 
-    let window = WebviewWindowBuilder::new(
-        &app,
-        "display",
-        WebviewUrl::App("index.html?screen=1".into()),
-    )
-    .title("LED Ekran Çıkışı — çift tık veya F11 ile tam ekran")
-    .inner_size(960.0, 540.0)
-    .min_inner_size(480.0, 270.0)
-    .decorations(true)
-    .resizable(true)
-    .center()
-    .build()
-    .map_err(|e| e.to_string())?;
+    let current_mon = app
+        .get_webview_window("master")
+        .and_then(|w| w.current_monitor().ok().flatten())
+        .or_else(|| app.primary_monitor().ok().flatten());
 
-    let _ = window.set_focus();
+    let current_key = current_mon.as_ref().map(|m| {
+        let p = m.position();
+        let s = m.size();
+        (p.x, p.y, s.width, s.height)
+    });
+
+    for m in monitors {
+        let p = m.position();
+        let s = m.size();
+        let key = (p.x, p.y, s.width, s.height);
+        if current_key.map(|ck| ck != key).unwrap_or(true) {
+            return (total, Some(m));
+        }
+    }
+
+    (total, None)
+}
+
+#[tauri::command]
+fn get_monitor_count(app: tauri::AppHandle) -> Result<usize, String> {
+    let count = app.available_monitors().map(|m| m.len()).unwrap_or(1);
+    Ok(count)
+}
+
+#[tauri::command]
+fn is_display_fullscreen(app: tauri::AppHandle) -> Result<bool, String> {
+    if let Some(w) = app.get_webview_window("display") {
+        return Ok(w.is_fullscreen().unwrap_or(false));
+    }
+    Ok(false)
+}
+
+#[tauri::command]
+async fn open_display_window(
+    app: tauri::AppHandle,
+    auto_second_screen_fullscreen: Option<bool>,
+) -> Result<Value, String> {
+    let use_auto_second = auto_second_screen_fullscreen.unwrap_or(true);
+    let (monitor_count, secondary_monitor) = find_secondary_monitor(&app);
+
+    if let Some(existing) = app.get_webview_window("display") {
+        let _ = existing.unminimize();
+        let _ = existing.show();
+        if use_auto_second {
+            if let Some(mon) = secondary_monitor {
+                let target_pos = *mon.position();
+                let target_size = *mon.size();
+                let already_on_target = existing
+                    .current_monitor()
+                    .ok()
+                    .flatten()
+                    .map(|cur| {
+                        cur.position().x == target_pos.x
+                            && cur.position().y == target_pos.y
+                            && cur.size().width == target_size.width
+                            && cur.size().height == target_size.height
+                    })
+                    .unwrap_or(false);
+
+                if !already_on_target {
+                    if existing.is_fullscreen().unwrap_or(false) {
+                        let _ = existing.set_fullscreen(false);
+                    }
+                    let _ = existing.set_position(tauri::Position::Physical(target_pos));
+                    let _ = existing.set_size(tauri::Size::Physical(target_size));
+                }
+                let _ = existing.set_fullscreen(true);
+                let _ = existing.set_focus();
+                return Ok(serde_json::json!({
+                    "fullscreen": true,
+                    "usedSecondScreen": true,
+                    "monitorCount": monitor_count
+                }));
+            }
+        }
+        let _ = existing.set_focus();
+        let is_fs = existing.is_fullscreen().unwrap_or(false);
+        return Ok(serde_json::json!({
+            "fullscreen": is_fs,
+            "usedSecondScreen": false,
+            "monitorCount": monitor_count
+        }));
+    }
+
+    let (window, used_second, is_fs) = if use_auto_second {
+        if let Some(mon) = secondary_monitor {
+            let target_pos = *mon.position();
+            let target_size = *mon.size();
+            let win = WebviewWindowBuilder::new(
+                &app,
+                "display",
+                WebviewUrl::App("index.html?screen=1".into()),
+            )
+            .title("LED Ekran Çıkışı — çift tık veya F11 ile tam ekran")
+            .inner_size(960.0, 540.0)
+            .min_inner_size(480.0, 270.0)
+            .decorations(true)
+            .resizable(true)
+            .visible(false)
+            .build()
+            .map_err(|e| e.to_string())?;
+
+            let _ = win.set_position(tauri::Position::Physical(target_pos));
+            let _ = win.set_size(tauri::Size::Physical(target_size));
+            let _ = win.show();
+            let _ = win.set_fullscreen(true);
+            let _ = win.set_focus();
+            (win, true, true)
+        } else {
+            let win = WebviewWindowBuilder::new(
+                &app,
+                "display",
+                WebviewUrl::App("index.html?screen=1".into()),
+            )
+            .title("LED Ekran Çıkışı — çift tık veya F11 ile tam ekran")
+            .inner_size(960.0, 540.0)
+            .min_inner_size(480.0, 270.0)
+            .decorations(true)
+            .resizable(true)
+            .center()
+            .build()
+            .map_err(|e| e.to_string())?;
+            let _ = win.set_focus();
+            (win, false, false)
+        }
+    } else {
+        let win = WebviewWindowBuilder::new(
+            &app,
+            "display",
+            WebviewUrl::App("index.html?screen=1".into()),
+        )
+        .title("LED Ekran Çıkışı — çift tık veya F11 ile tam ekran")
+        .inner_size(960.0, 540.0)
+        .min_inner_size(480.0, 270.0)
+        .decorations(true)
+        .resizable(true)
+        .center()
+        .build()
+        .map_err(|e| e.to_string())?;
+        let _ = win.set_focus();
+        (win, false, false)
+    };
+    let _ = window;
 
     // Master hemen "bağlı" görsün (ilk heartbeati beklemeden) ve güncel state'i yollasın
     let _ = app.emit("md-display-status", serde_json::json!({ "connected": true }));
 
-    Ok(())
+    Ok(serde_json::json!({
+        "fullscreen": is_fs,
+        "usedSecondScreen": used_second,
+        "monitorCount": monitor_count
+    }))
 }
 
 /// LED penceresinin tam ekran durumunu değiştirir.
@@ -871,6 +1010,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_loop_dir,
+            get_monitor_count,
+            is_display_fullscreen,
             open_display_window,
             close_display_window,
             toggle_display_fullscreen,

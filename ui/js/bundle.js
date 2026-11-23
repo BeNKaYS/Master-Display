@@ -1270,11 +1270,17 @@
         if (cleanLive.loopTrack.flipY !== undefined) {
           nextBg.flipY = Boolean(cleanLive.loopTrack.flipY);
         }
+        if (cleanLive.loopTrack.playbackRate !== undefined && Number.isFinite(Number(cleanLive.loopTrack.playbackRate))) {
+          nextBg.playbackRate = Math.max(0.1, Math.min(4, Number(cleanLive.loopTrack.playbackRate)));
+        } else {
+          nextBg.playbackRate = 1;
+        }
       } else {
         // Sıradaki medyaya özel loop video ekli değilse, önceki medyanın loop videosu kapatılır ve taşınmaz!
         nextBg.enabled = false;
         nextBg.src = null;
         nextBg.grayscale = false;
+        nextBg.playbackRate = 1;
       }
 
       this.setState({
@@ -1835,16 +1841,22 @@
     }
 
     openDisplayWindow() {
+      let autoSecondScreenFullscreen = true;
+      try {
+        autoSecondScreenFullscreen = localStorage.getItem('master_display_auto_second_screen_fs') !== 'false';
+      } catch (e) {}
+
       // Tauri: gerçek WebviewWindow (window.open WebView2'de çalışmaz)
       if (MD.tauri) {
-        window.__TAURI__.core.invoke('open_display_window').catch((e) => {
+        window.__TAURI__.core.invoke('open_display_window', { autoSecondScreenFullscreen }).catch((e) => {
           console.error('[MD] LED ekran penceresi açılamadı:', e);
         });
         return null;
       }
 
       const url = 'index.html?screen=1';
-      const features = 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes';
+      const screenLeft = autoSecondScreenFullscreen ? ((window.screen.availWidth || 1920) + 20) : 80;
+      const features = `width=1280,height=720,left=${screenLeft},top=0,menubar=no,toolbar=no,location=no,status=no,resizable=yes`;
       if (this.displayWindowRef && !this.displayWindowRef.closed) {
         this.displayWindowRef.focus();
         this.addDisplayTarget(this.displayWindowRef);
@@ -2199,7 +2211,7 @@
    * 800 ms yumuşak Crossfade geçişi yapmasını sağlar (A/B çift tamponlu).
    * İzleyici döngünün başa sardığını fark etmez.
    */
-  function attachSeamlessLoopCrossfade(primaryVideo, fadeMs = 800) {
+  function attachSeamlessLoopCrossfade(primaryVideo, fadeMs = 1800) {
     if (!primaryVideo) return null;
     if (primaryVideo._seamlessLoopCtrl) return primaryVideo._seamlessLoopCtrl;
     if (primaryVideo._seamlessLoopBound) return null;
@@ -2260,14 +2272,30 @@
     let fadeTimer = null;
     let rafId = null;
     let currentSrc = primaryVideo.getAttribute('src') || primaryVideo.src || '';
+    let currentRate = (Number.isFinite(Number(primaryVideo.playbackRate)) && Number(primaryVideo.playbackRate) > 0)
+      ? Math.max(0.1, Math.min(4, Number(primaryVideo.playbackRate)))
+      : 1;
 
-    const getLeadTime = (dur) => {
-      const fadeSec = fadeMs / 1000;
-      // Normal videolarda 800ms geçiş için ~1.05s önceden başla ki eski video geçiş bitmeden ASLA donmasın
-      if (dur > fadeSec * 2.2) {
-        return fadeSec + 0.25;
-      }
-      return dur * 0.45;
+    const applyRate = (v, rate) => {
+      if (!v) return;
+      try {
+        v.defaultPlaybackRate = rate;
+        if (Math.abs(v.playbackRate - rate) > 0.001) {
+          v.playbackRate = rate;
+        }
+      } catch (e) {}
+    };
+
+    applyRate(primaryVideo, currentRate);
+    applyRate(cloneVideo, currentRate);
+
+    const getFadeTiming = (dur) => {
+      const rate = currentRate > 0 ? currentRate : 1;
+      const wallDur = dur / rate;
+      // Geçiş süresi toplam duvar saati süresinin %38'ini aşmasın (kısa videolarda sürekli crossfade olmasın)
+      const effectiveFadeMs = Math.min(fadeMs, Math.max(300, Math.round(wallDur * 1000 * 0.38)));
+      const leadTime = Math.min(dur * 0.45, ((effectiveFadeMs / 1000) + 0.25) * rate);
+      return { effectiveFadeMs, leadTime };
     };
 
     const triggerCrossfade = () => {
@@ -2286,22 +2314,28 @@
       }
       standbyVid.muted = true;
       standbyVid.playsInline = true;
+      applyRate(standbyVid, currentRate);
 
       const dur = activeVid.duration || 10;
-      const leadTime = getLeadTime(dur);
-      const actualFadeMs = Math.min(fadeMs, Math.max(250, Math.round(leadTime * 850)));
-      const transitionStr = `opacity ${actualFadeMs}ms ease-in-out`;
+      const { effectiveFadeMs } = getFadeTiming(dur);
+      const actualFadeMs = effectiveFadeMs;
+      // Sine-benzeri yumuşak S-eğrisi geçiş (kararma/alpha dip olmadan sabit alt katman üzerine erir)
+      const transitionStr = `opacity ${actualFadeMs}ms cubic-bezier(0.37, 0, 0.63, 1)`;
 
       const startFade = () => {
-        // Gelen videoyu üste al (zIndex 2)
-        standbyVid.style.zIndex = '2';
+        applyRate(standbyVid, currentRate);
+        // Alttaki (giden) video opacity:1 sabit kalır → ortada %75 kararma (alpha dip) oluşmaz!
+        activeVid.style.transition = 'none';
         activeVid.style.zIndex = '1';
+        activeVid.style.opacity = '1';
 
-        standbyVid.style.transition = transitionStr;
-        activeVid.style.transition = transitionStr;
+        // Gelen videoyu üstte opacity:0'dan 1'e yumuşakça erit
+        standbyVid.style.transition = 'none';
+        standbyVid.style.zIndex = '2';
+        standbyVid.style.opacity = '0';
         void standbyVid.offsetWidth;
+        standbyVid.style.transition = transitionStr;
         standbyVid.style.opacity = '1';
-        activeVid.style.opacity = '0';
 
         const outgoingVid = activeVid;
         const incomingVid = standbyVid;
@@ -2311,11 +2345,15 @@
         if (fadeTimer) clearTimeout(fadeTimer);
         fadeTimer = setTimeout(() => {
           try {
+            incomingVid.style.transition = 'none';
+            incomingVid.style.zIndex = '1';
+            incomingVid.style.opacity = '1';
+
+            outgoingVid.style.transition = 'none';
+            outgoingVid.style.zIndex = '0';
+            outgoingVid.style.opacity = '0';
             outgoingVid.pause();
             outgoingVid.currentTime = 0;
-            outgoingVid.style.zIndex = '1';
-            outgoingVid.style.opacity = '0';
-            incomingVid.style.zIndex = '1';
           } catch (e) {}
           isCrossfading = false;
         }, actualFadeMs + 60);
@@ -2337,7 +2375,7 @@
         const dur = activeVid.duration;
         const cur = activeVid.currentTime;
         if (dur && Number.isFinite(dur) && dur > 0.5) {
-          const leadTime = getLeadTime(dur);
+          const { leadTime } = getFadeTiming(dur);
           if (dur - cur <= leadTime) {
             triggerCrossfade();
           }
@@ -2391,6 +2429,7 @@
           cloneVideo.setAttribute('src', newSrc);
           cloneVideo.load();
           cloneVideo.currentTime = 0;
+          applyRate(cloneVideo, currentRate);
         } catch (e) {}
 
         try {
@@ -2400,14 +2439,25 @@
           primaryVideo.setAttribute('src', newSrc);
           primaryVideo.load();
           primaryVideo.currentTime = 0;
+          applyRate(primaryVideo, currentRate);
           void primaryVideo.offsetWidth;
           primaryVideo.style.transition = baseTransition;
           cloneVideo.style.transition = baseTransition;
         } catch (e) {}
       },
+      setPlaybackRate(rate) {
+        const nextRate = (Number.isFinite(Number(rate)) && Number(rate) > 0)
+          ? Math.max(0.1, Math.min(4, Number(rate)))
+          : 1;
+        currentRate = nextRate;
+        applyRate(primaryVideo, currentRate);
+        applyRate(cloneVideo, currentRate);
+      },
       play() {
         primaryVideo.style.display = 'block';
         cloneVideo.style.display = 'block';
+        applyRate(primaryVideo, currentRate);
+        applyRate(cloneVideo, currentRate);
         startRaf();
         if (activeVid.paused) {
           activeVid.play().catch(() => {});
@@ -2641,7 +2691,7 @@
 
       this._currentBgVideoSrc = null;
       if (this.bgVideo) {
-        this._bgLoopCtrl = attachSeamlessLoopCrossfade(this.bgVideo, 800);
+        this._bgLoopCtrl = attachSeamlessLoopCrossfade(this.bgVideo, 1800);
       }
     }
 
@@ -3347,6 +3397,16 @@
     _initFullscreenShortcut() {
       if (this.isPreview) return;
 
+      // Pencere doğrudan 2. ekranda tam ekran açıldıysa başlangıç durumunu eşitle
+      if (MD.tauri) {
+        window.__TAURI__.core.invoke('is_display_fullscreen')
+          .then((isFs) => {
+            this._isDisplayFullscreen = Boolean(isFs);
+            this._syncDisplayPinVisibility?.();
+          })
+          .catch(() => {});
+      }
+
       const toggleFullscreen = () => {
         // Tauri: pencere tam ekranı (daha güvenilir, Esc/F11 simetrik).
         // Tarayıcı: HTML tam ekranı.
@@ -3678,7 +3738,19 @@
         state.playbackState !== 'stopped' &&
         (state.ceremonySettings?.audioScreenMode === 'loop')
       );
+      const bgRate = (bg && bg.playbackRate !== undefined && Number.isFinite(Number(bg.playbackRate)) && Number(bg.playbackRate) > 0)
+        ? Math.max(0.1, Math.min(4, Number(bg.playbackRate)))
+        : 1;
       if (!bg || !bg.enabled || isAudioLoopActive) {
+        if (isAudioLoopActive) {
+          const audioLoopVid = this.mediaContent?.querySelector('.media-wrapper > video');
+          if (audioLoopVid) {
+            if (audioLoopVid._seamlessLoopCtrl) audioLoopVid._seamlessLoopCtrl.setPlaybackRate(bgRate);
+            else {
+              try { audioLoopVid.defaultPlaybackRate = bgRate; audioLoopVid.playbackRate = bgRate; } catch (e) {}
+            }
+          }
+        }
         if (this.bgLayer.style.display !== 'none') {
           this.bgLayer.style.transition = 'opacity 350ms cubic-bezier(0.4, 0, 0.2, 1)';
           this.bgLayer.style.opacity = '0';
@@ -3725,6 +3797,7 @@
             this._currentBgVideoSrc = bg.src;
             this._bgLoopCtrl.setSrc(bg.src);
           }
+          this._bgLoopCtrl.setPlaybackRate(bgRate);
           this._bgLoopCtrl.play();
         } else {
           if (this._currentBgVideoSrc !== bg.src) {
@@ -3732,6 +3805,10 @@
             this.bgVideo.src = bg.src;
             this.bgVideo.load();
           }
+          try {
+            this.bgVideo.defaultPlaybackRate = bgRate;
+            if (Math.abs(this.bgVideo.playbackRate - bgRate) > 0.001) this.bgVideo.playbackRate = bgRate;
+          } catch (e) {}
           this.bgVideo.style.display = 'block';
           if (this.bgVideo.paused) this.bgVideo.play().catch(() => {});
         }
@@ -4077,8 +4154,14 @@
             `, state, releaseOld, null);
             const loopVid = loopLayer && loopLayer.querySelector('.media-wrapper > video');
             if (loopVid) {
-              const ctrl = attachSeamlessLoopCrossfade(loopVid, 800);
-              if (ctrl) ctrl.play();
+              const ctrl = attachSeamlessLoopCrossfade(loopVid, 1800);
+              const bgRate = (state.globalBackground && Number.isFinite(Number(state.globalBackground.playbackRate)) && Number(state.globalBackground.playbackRate) > 0)
+                ? Math.max(0.1, Math.min(4, Number(state.globalBackground.playbackRate)))
+                : 1;
+              if (ctrl) {
+                ctrl.setPlaybackRate(bgRate);
+                ctrl.play();
+              }
             }
           } else {
             this.mediaContent.innerHTML = '';
@@ -4807,9 +4890,11 @@
       this.btnLoopBw = document.getElementById('btn-loop-bw');
       this.btnLoopFlipX = document.getElementById('btn-loop-flip-x');
       this.btnLoopFlipY = document.getElementById('btn-loop-flip-y');
+      this.selectLoopSpeed = document.getElementById('select-loop-speed');
       this.previewLoopGrayscale = false;
       this.previewLoopFlipX = false;
       this.previewLoopFlipY = false;
+      this.previewLoopSpeed = 1;
       this.selectMediaLoop = document.getElementById('select-media-loop');
       this.btnMediaLoopToggle = document.getElementById('btn-media-loop-toggle');
 
@@ -7497,6 +7582,52 @@
         });
       }
 
+      // Loop Video Akış Hızı (select-loop-speed + Mouse Wheel)
+      if (this.selectLoopSpeed) {
+        this._updateLoopSpeedUi();
+        const applySpeedChange = (rawVal, showToast = true) => {
+          const parsed = parseFloat(rawVal);
+          const rate = (Number.isFinite(parsed) && parsed > 0) ? Math.max(0.1, Math.min(4, parsed)) : 1;
+          this.previewLoopSpeed = rate;
+          const selItem = this._selectedItem();
+          if (selItem && selItem.loopTrack && selItem.loopTrack.src) {
+            selItem.loopTrack.playbackRate = rate;
+            this.saveCurrentPlaylist?.();
+          }
+          const st = this.appState.getState();
+          const curBg = st.globalBackground || {};
+          const isAudioLoopLive = Boolean(
+            st.liveItem && st.liveItem.type === 'audio' && st.playbackState !== 'stopped' &&
+            st.ceremonySettings?.audioScreenMode === 'loop'
+          );
+          if (curBg.enabled || isAudioLoopLive) {
+            this.appState.setGlobalBackground({ playbackRate: rate });
+          }
+          this._updateLoopSpeedUi();
+          this._applyPreviewLoopSpeed();
+          if (showToast) {
+            const label = rate === 1 ? '1x (Normal)' : `${rate.toFixed(2).replace(/\.00$/, '')}x`;
+            this._toast?.(`⏩ Loop Video Hızı: ${label}`, rate === 1 ? 'info' : 'ok');
+          }
+        };
+
+        this.selectLoopSpeed.addEventListener('change', (e) => {
+          applySpeedChange(e.target.value, true);
+        });
+
+        this.selectLoopSpeed.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const opts = this.selectLoopSpeed.options;
+          if (!opts || opts.length === 0) return;
+          const dir = e.deltaY < 0 ? 1 : -1;
+          const nextIdx = Math.max(0, Math.min(opts.length - 1, this.selectLoopSpeed.selectedIndex + dir));
+          if (nextIdx !== this.selectLoopSpeed.selectedIndex) {
+            this.selectLoopSpeed.selectedIndex = nextIdx;
+            applySpeedChange(this.selectLoopSpeed.value, false);
+          }
+        }, { passive: false });
+      }
+
       // Loop Arka Plan Açma / Onaylama / Kapatma (btn-check-loop)
       if (this.btnCheckLoop) {
         this._updateLoopButtonUi();
@@ -7525,7 +7656,8 @@
               opacity: isNaN(opacity) ? 0.35 : opacity,
               grayscale: Boolean(this.previewLoopGrayscale),
               flipX: Boolean(this.previewLoopFlipX),
-              flipY: Boolean(this.previewLoopFlipY)
+              flipY: Boolean(this.previewLoopFlipY),
+              playbackRate: this.previewLoopSpeed || 1
             });
             this.previewLoopSrc = targetSrc;
             this.previewLoopEnabled = true;
@@ -7645,7 +7777,7 @@
       const savedOpacity = Number.isFinite(rawPct) ? Math.max(0, Math.min(1, rawPct / 100)) : 0.35;
       const pctLabel = Math.round(savedOpacity * 100);
 
-      item.loopTrack = src ? { src, name, enabled: true, opacity: savedOpacity, grayscale: Boolean(this.previewLoopGrayscale), flipX: Boolean(this.previewLoopFlipX), flipY: Boolean(this.previewLoopFlipY) } : null;
+      item.loopTrack = src ? { src, name, enabled: true, opacity: savedOpacity, grayscale: Boolean(this.previewLoopGrayscale), flipX: Boolean(this.previewLoopFlipX), flipY: Boolean(this.previewLoopFlipY), playbackRate: this.previewLoopSpeed || 1 } : null;
 
       // Canlı yayındaki öğeyse ekranı ve canlı arka planı da güncelle
       const st = this.appState.getState();
@@ -7657,6 +7789,10 @@
           nextBg.loop = true;
           nextBg.enabled = item.loopTrack.enabled !== false;
           nextBg.opacity = savedOpacity;
+          nextBg.grayscale = Boolean(item.loopTrack.grayscale);
+          nextBg.flipX = Boolean(item.loopTrack.flipX);
+          nextBg.flipY = Boolean(item.loopTrack.flipY);
+          nextBg.playbackRate = item.loopTrack.playbackRate || 1;
         } else {
           nextBg.enabled = false;
         }
@@ -7696,9 +7832,14 @@
           if (item.loopTrack.grayscale !== undefined) this.previewLoopGrayscale = Boolean(item.loopTrack.grayscale);
           if (item.loopTrack.flipX !== undefined) this.previewLoopFlipX = Boolean(item.loopTrack.flipX);
           if (item.loopTrack.flipY !== undefined) this.previewLoopFlipY = Boolean(item.loopTrack.flipY);
+          this.previewLoopSpeed = (item.loopTrack.playbackRate !== undefined && Number.isFinite(Number(item.loopTrack.playbackRate)) && Number(item.loopTrack.playbackRate) > 0)
+            ? Math.max(0.1, Math.min(4, Number(item.loopTrack.playbackRate)))
+            : 1;
           this._updateLoopBwButtonUi();
           this._updateLoopFlipButtonsUi();
+          this._updateLoopSpeedUi();
           this._applyPreviewLoopTransforms();
+          this._applyPreviewLoopSpeed();
         }
       }
       this.selectMediaLoop.disabled = !item;
@@ -7822,7 +7963,11 @@
           type: 'video',
           src: src,
           loop: true,
-          opacity: isNaN(opacity) ? 0.35 : opacity
+          opacity: isNaN(opacity) ? 0.35 : opacity,
+          grayscale: Boolean(this.previewLoopGrayscale),
+          flipX: Boolean(this.previewLoopFlipX),
+          flipY: Boolean(this.previewLoopFlipY),
+          playbackRate: this.previewLoopSpeed || 1
         });
       }
 
@@ -7884,7 +8029,7 @@
             <div class="playlist-row-left">
               <span class="drag-handle" title="Sıralamak için buradan tutup sürükleyin">⋮⋮</span>
               <span style="font-size:12px;">${typeIcon}</span>
-              <span class="playlist-name">#${index + 1} ${item.title}</span>
+              <span class="playlist-name">${item.title}</span>
             </div>
             <div class="playlist-row-icons">
               <span class="playlist-status-badge">${statusBadge}</span>
@@ -8156,6 +8301,51 @@
       this._applyPreviewLoopTransforms();
     }
 
+    _updateLoopSpeedUi() {
+      if (!this.selectLoopSpeed) return;
+      const rate = (Number.isFinite(Number(this.previewLoopSpeed)) && Number(this.previewLoopSpeed) > 0)
+        ? Math.max(0.1, Math.min(4, Number(this.previewLoopSpeed)))
+        : 1;
+      const opts = Array.from(this.selectLoopSpeed.options || []);
+      let bestOpt = null;
+      let bestDiff = Infinity;
+      for (const opt of opts) {
+        const val = parseFloat(opt.value);
+        if (Number.isFinite(val)) {
+          const diff = Math.abs(val - rate);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestOpt = opt;
+          }
+        }
+      }
+      if (bestOpt && this.selectLoopSpeed.value !== bestOpt.value) {
+        this.selectLoopSpeed.value = bestOpt.value;
+      }
+      const isCustom = Math.abs(rate - 1) > 0.001;
+      this.selectLoopSpeed.classList.toggle('is-active', isCustom);
+      this.selectLoopSpeed.title = isCustom
+        ? `Loop Video Akış Hızı: ${rate.toFixed(2).replace(/\.00$/, '')}x (Fare tekerleğiyle değiştirebilirsiniz)`
+        : 'Loop Video Akış Hızı: 1x Normal (Fare tekerleğiyle hızlı değiştirebilirsiniz)';
+    }
+
+    _applyPreviewLoopSpeed() {
+      if (!this.mediaPreviewArea) return;
+      const rate = (Number.isFinite(Number(this.previewLoopSpeed)) && Number(this.previewLoopSpeed) > 0)
+        ? Math.max(0.1, Math.min(4, Number(this.previewLoopSpeed)))
+        : 1;
+      this.mediaPreviewArea.querySelectorAll('video[data-pv-loop-vid]').forEach((lv) => {
+        if (lv._seamlessLoopCtrl && typeof lv._seamlessLoopCtrl.setPlaybackRate === 'function') {
+          lv._seamlessLoopCtrl.setPlaybackRate(rate);
+        } else {
+          try {
+            lv.defaultPlaybackRate = rate;
+            lv.playbackRate = rate;
+          } catch (e) {}
+        }
+      });
+    }
+
     _applyPreviewLedConfigInPlace(ledCfg, currentItem) {
       if (!this.mediaPreviewArea || !currentItem) return;
       const wrapper = this.mediaPreviewArea.querySelector('.staging-monitor-wrapper');
@@ -8235,6 +8425,7 @@
           const _sSig = `__standalone_loop__|${_standaloneLoopSrc}|${_sW}x${_sH}`;
           if (this._lastPreviewDomSig === _sSig && this.mediaPreviewArea.querySelector('.staging-monitor-wrapper')) {
             this._applyPreviewLoopOpacity(_sOp);
+            this._applyPreviewLoopSpeed();
             return;
           }
           this._lastPreviewDomSig = _sSig;
@@ -8248,8 +8439,11 @@
             </div>
           `;
           this.mediaPreviewArea.querySelectorAll('video[data-pv-loop-vid]').forEach((lv) => {
-            const ctrl = attachSeamlessLoopCrossfade(lv, 800);
-            if (ctrl) ctrl.play();
+            const ctrl = attachSeamlessLoopCrossfade(lv, 1800);
+            if (ctrl) {
+              ctrl.setPlaybackRate(this.previewLoopSpeed || 1);
+              ctrl.play();
+            }
           });
           return;
         }
@@ -8534,8 +8728,11 @@
 
       // Ön görünümdeki loop videolar için de 800 ms Crossfade döngüsü bağla
       this.mediaPreviewArea.querySelectorAll('video[data-pv-loop-vid]').forEach((lv) => {
-        const ctrl = attachSeamlessLoopCrossfade(lv, 800);
-        if (ctrl) ctrl.play();
+        const ctrl = attachSeamlessLoopCrossfade(lv, 1800);
+        if (ctrl) {
+          ctrl.setPlaybackRate(this.previewLoopSpeed || 1);
+          ctrl.play();
+        }
       });
 
       if (currentItem.type === 'video') {
@@ -10241,8 +10438,20 @@
       const chkLock = document.getElementById('chk-setting-lock-layout');
       const chkAwake = document.getElementById('chk-setting-keep-awake');
       const badgeLock = document.getElementById('badge-setting-lock-status');
+      const chkAutoSecond = document.getElementById('chk-setting-auto-second-screen');
+      const badgeAutoSecond = document.getElementById('badge-setting-second-screen-status');
+      const badgeMonitorCount = document.getElementById('badge-setting-monitor-count');
+      const AUTO_SECOND_KEY = 'master_display_auto_second_screen_fs';
 
       if (!modal) return;
+
+      const getAutoSecondEnabled = () => {
+        try {
+          return localStorage.getItem(AUTO_SECOND_KEY) !== 'false';
+        } catch (e) {
+          return true;
+        }
+      };
 
       const refreshUi = () => {
         const layoutMgr = window.__LayoutSplitterManager;
@@ -10257,6 +10466,25 @@
         const awakeMgr = window.__KeepAwakeManager || window.__MasterApp?.keepAwakeManager;
         if (chkAwake && awakeMgr) {
           chkAwake.checked = Boolean(awakeMgr.isEnabled);
+        }
+        const autoSecondOn = getAutoSecondEnabled();
+        if (chkAutoSecond) {
+          chkAutoSecond.checked = autoSecondOn;
+        }
+        if (badgeAutoSecond) {
+          badgeAutoSecond.textContent = autoSecondOn ? 'Açık' : 'Kapalı';
+          badgeAutoSecond.style.background = autoSecondOn ? '#10b98126' : 'var(--bg-card)';
+          badgeAutoSecond.style.color = autoSecondOn ? '#10b981' : 'var(--text-dim)';
+        }
+        if (badgeMonitorCount && MD.tauri) {
+          window.__TAURI__.core.invoke('get_monitor_count')
+            .then((count) => {
+              const n = Number(count) || 1;
+              badgeMonitorCount.textContent = n >= 2 ? `${n} ekran algılandı` : 'Tek ekran';
+              badgeMonitorCount.style.display = 'inline-block';
+              badgeMonitorCount.style.color = n >= 2 ? '#38bdf8' : 'var(--text-dim)';
+            })
+            .catch(() => {});
         }
       };
 
@@ -10288,6 +10516,20 @@
         if (awakeMgr) {
           awakeMgr.setEnabled(chkAwake.checked, true);
         }
+      });
+
+      chkAutoSecond?.addEventListener('change', () => {
+        const enabled = Boolean(chkAutoSecond.checked);
+        try {
+          localStorage.setItem(AUTO_SECOND_KEY, enabled ? 'true' : 'false');
+        } catch (e) {}
+        refreshUi();
+        this._toast?.(
+          enabled
+            ? '🖥️ Otomatik ikinci ekran (Tam Ekran) açıldı'
+            : '🖥️ Otomatik ikinci ekran (Tam Ekran) kapatıldı',
+          enabled ? 'ok' : 'info'
+        );
       });
 
       // --- Otomatik Güncelleme (GitHub Releases) Mantığı ---

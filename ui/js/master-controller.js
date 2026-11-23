@@ -909,7 +909,7 @@ export class MasterController {
           <div class="playlist-row-left">
             <span class="drag-handle" title="Sıralamak için buradan tutup sürükleyin">⋮⋮</span>
             <span style="font-size:12px;">${typeIcon}</span>
-            <span class="playlist-name">#${index + 1} ${item.title}</span>
+            <span class="playlist-name">${item.title}</span>
           </div>
           <div class="playlist-row-icons">
             <span class="playlist-status-badge">${statusBadge}</span>

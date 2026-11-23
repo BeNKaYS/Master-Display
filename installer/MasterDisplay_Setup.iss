@@ -1,6 +1,6 @@
 #define MyAppName "Master-Display"
 #define MyAppFullTitle "Master-Display — Tören ve Sahne Reji Konsolu"
-#define MyAppVersion "2.0.1"
+#define MyAppVersion "2.1.0"
 #define MyAppPublisher "T.C. Millî Eğitim Bakanlığı - Mardin İl Millî Eğitim Müdürlüğü (Geliştirici: SERCAN ÖZDEMİR)"
 #define MyAppURL "https://mardin.meb.gov.tr/"
 #define MyAppDevURL "https://github.com/BeNKaYS"
@@ -22,7 +22,7 @@ AllowNoIcons=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=..\Setup
-OutputBaseFilename=Master-Display_Kurulum_Setup
+OutputBaseFilename=Master-Display_Kurulum_Setup_v{#MyAppVersion}
 SetupIconFile=..\src-tauri\icons\icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 WizardStyle=modern

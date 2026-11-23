@@ -1,4 +1,4 @@
-# Master-Display — Windows Kurulum Paketi (Setup.exe) Oluşturucu
+﻿# Master-Display — Windows Kurulum Paketi (Setup.exe) Oluşturucu
 $ErrorActionPreference = 'Stop'
 
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -35,19 +35,27 @@ if (-not $Iscc) {
     throw "ISCC.exe (Inno Setup 6) bulunamadı."
 }
 
-Write-Host ">> 3/3 Inno Setup ile Master-Display_Kurulum_Setup.exe paketleniyor..." -ForegroundColor Cyan
+$IssPath = "$Root\installer\MasterDisplay_Setup.iss"
+$IssContent = Get-Content -Path $IssPath -Raw
+$AppVersion = "2.1.0"
+if ($IssContent -match '#define\s+MyAppVersion\s+"([^"]+)"') {
+    $AppVersion = $Matches[1]
+}
+$SetupFileName = "Master-Display_Kurulum_Setup_v$AppVersion.exe"
+
+Write-Host ">> 3/3 Inno Setup ile $SetupFileName paketleniyor..." -ForegroundColor Cyan
 $TempOut = Join-Path $env:TEMP "md_setup_out"
 New-Item -ItemType Directory -Path $TempOut -Force | Out-Null
 
-& $Iscc "/O$TempOut" "$Root\installer\MasterDisplay_Setup.iss"
+& $Iscc "/O$TempOut" $IssPath
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup derlemesi başarısız oldu (kod: $LASTEXITCODE)"
 }
 
 $SetupDir = Join-Path $Root "Setup"
 New-Item -ItemType Directory -Path $SetupDir -Force | Out-Null
-$TargetExe = Join-Path $SetupDir "Master-Display_Kurulum_Setup.exe"
-Move-Item -Path (Join-Path $TempOut "Master-Display_Kurulum_Setup.exe") -Destination $TargetExe -Force
+$TargetExe = Join-Path $SetupDir $SetupFileName
+Move-Item -Path (Join-Path $TempOut $SetupFileName) -Destination $TargetExe -Force
 
 $FileInfo = Get-Item $TargetExe
 $SizeMB = [math]::Round($FileInfo.Length / 1MB, 2)

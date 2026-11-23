@@ -281,6 +281,18 @@
                   </div>
                 </div>
                 <div class="loop-btn-group" style="flex-shrink: 0; display: flex; align-items: center; gap: 4px;">
+                  <select id="select-loop-speed" class="loop-speed-select" title="Loop Video Akış Hızı (Fare tekerleğiyle hızlı değiştirilebilir)">
+                    <option value="0.25">0.25x</option>
+                    <option value="0.3">0.30x</option>
+                    <option value="0.4">0.40x</option>
+                    <option value="0.5">0.50x</option>
+                    <option value="0.65">0.65x</option>
+                    <option value="0.8">0.80x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="1.2">1.20x</option>
+                    <option value="1.5">1.50x</option>
+                    <option value="2">2x</option>
+                  </select>
                   <button type="button" id="btn-loop-bw" class="btn btn-loop-bw" title="Siyah-Beyaz Filtre: Loop videoyu monokrom (siyah/beyaz) yapar" style="width: 27px; height: 26px; padding: 0; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--panel-border); background: var(--bg-secondary); color: var(--text-muted); cursor: pointer; border-radius: 4px; transition: all 0.15s ease;">
                     <span style="font-size: 13px; line-height: 1;">🌓</span>
                   </button>
@@ -887,12 +899,27 @@
             </span>
           </div>
         </label>
+
+        <!-- 2.5. Otomatik İkinci Ekran (Tam Ekran) -->
+        <label class="settings-checkbox-card" style="display:flex; align-items:flex-start; gap:12px; background:var(--bg-tertiary); padding:14px; border-radius:8px; border:1px solid var(--panel-border); cursor:pointer;">
+          <input type="checkbox" id="chk-setting-auto-second-screen" checked style="cursor:pointer; accent-color:var(--accent-blue); width:18px; height:18px; margin-top:2px;">
+          <div style="display:flex; flex-direction:column; gap:3px;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="font-size:13px; font-weight:700; color:var(--text-main);">🖥️ Otomatik İkinci Ekran (Tam Ekran)</span>
+              <span id="badge-setting-second-screen-status" style="font-size:10px; background:#10b98126; color:#10b981; padding:1px 6px; border-radius:4px; font-weight:700;">Açık</span>
+              <span id="badge-setting-monitor-count" style="font-size:10px; background:var(--bg-card); color:var(--text-dim); padding:1px 6px; border-radius:4px; font-weight:600; display:none;"></span>
+            </div>
+            <span style="font-size:11px; color:var(--text-muted); line-height:1.4;">
+              "Ekranı Aç" butonuna tıklandığında ikinci ekran (LED / projeksiyon) bağlıysa çıkış penceresini otomatik olarak ikinci ekrana taşır ve tam ekran başlatır. Tek ekran bağlıysa normal pencerede açılır.
+            </span>
+          </div>
+        </label>
         <!-- 3. Güncellemeler (GitHub Releases) -->
         <div class="settings-update-card" style="display:flex; flex-direction:column; gap:10px; background:var(--bg-tertiary); padding:14px; border-radius:8px; border:1px solid var(--panel-border);">
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:13px; font-weight:700; color:var(--text-main);">🚀 Otomatik Güncelleme (GitHub)</span>
-              <span id="badge-update-version" style="font-size:10px; background:var(--bg-card); color:var(--accent-blue); padding:1px 6px; border-radius:4px; font-weight:700;">v2.0.1</span>
+              <span id="badge-update-version" style="font-size:10px; background:var(--bg-card); color:var(--accent-blue); padding:1px 6px; border-radius:4px; font-weight:700;">v2.1.0</span>
             </div>
             <button id="btn-check-update" class="btn btn-secondary" style="font-size:11px; padding:4px 10px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
               <span id="btn-check-update-icon">🔄</span>
@@ -907,7 +934,7 @@
           <!-- Yeni Sürüm Bulunduğunda Görünecek Alan -->
           <div id="update-available-box" style="display:none; flex-direction:column; gap:8px; background:rgba(30, 144, 255, 0.08); border:1px solid rgba(30, 144, 255, 0.3); padding:10px; border-radius:6px;">
             <div style="display:flex; align-items:center; justify-content:space-between;">
-              <span id="update-new-tag" style="font-size:12px; font-weight:700; color:var(--accent-blue);">Yeni Sürüm: v2.0.1</span>
+              <span id="update-new-tag" style="font-size:12px; font-weight:700; color:var(--accent-blue);">Yeni Sürüm: v2.1.0</span>
               <span id="update-asset-size" style="font-size:10px; color:var(--text-dim);">~95 MB</span>
             </div>
             <div id="update-notes-preview" style="font-size:11px; color:var(--text-main); max-height:85px; overflow-y:auto; white-space:pre-wrap; background:rgba(0,0,0,0.25); padding:6px 8px; border-radius:4px; line-height:1.4;"></div>
@@ -936,7 +963,7 @@
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:13px; font-weight:700; color:var(--text-main);">🛡️ Lisans Yönetimi</span>
-              <span id="badge-license-version" style="font-size:10px; background:var(--bg-card); color:var(--accent-blue); padding:1px 6px; border-radius:4px; font-weight:700;">v2.0.1</span>
+              <span id="badge-license-version" style="font-size:10px; background:var(--bg-card); color:var(--accent-blue); padding:1px 6px; border-radius:4px; font-weight:700;">v2.1.0</span>
               <span id="settings-lic-badge" style="font-size:10px; background:rgba(16, 185, 129, 0.15); color:#10b981; padding:1px 6px; border-radius:4px; font-weight:700;">Aktif</span>
             </div>
             <button type="button" id="btn-open-license-from-settings" class="btn btn-secondary" style="font-size:11px; padding:4px 10px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">

@@ -4021,16 +4021,37 @@ body.layout-locked .splitter-h:hover::before {
   box-shadow: none !important;
 }
 
-/* SİYAH-BEYAZ LOOP FİLTRESİ */
+/* SİYAH-BEYAZ LOOP FİLTRESİ, AYNA VE AKIŞ HIZI */
+.loop-speed-select {
+  height: 26px;
+  min-width: 56px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: monospace;
+  border: 1px solid var(--panel-border);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+}
+.loop-speed-select option {
+  background: var(--bg-secondary);
+  color: var(--text-main);
+}
 .btn-loop-bw.is-active,
-.btn-loop-flip.is-active {
+.btn-loop-flip.is-active,
+.loop-speed-select.is-active {
   background: rgba(56, 189, 248, 0.18) !important;
   border-color: #38bdf8 !important;
   color: #38bdf8 !important;
   box-shadow: 0 0 8px rgba(56, 189, 248, 0.35) !important;
 }
 .btn-loop-bw:hover,
-.btn-loop-flip:hover {
+.btn-loop-flip:hover,
+.loop-speed-select:hover {
   border-color: var(--accent-blue);
   color: var(--text-main);
 }
