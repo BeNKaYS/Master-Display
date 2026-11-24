@@ -578,7 +578,7 @@ fn media_cache_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 ///
 /// `final` olan parçada dosya yolu döner; ara parçalarda boş string döner.
 #[tauri::command]
-fn media_import_chunk(app: tauri::AppHandle, request: Request<'_>) -> Result<String, String> {
+async fn media_import_chunk(app: tauri::AppHandle, request: Request<'_>) -> Result<String, String> {
     let raw = match request.body() {
         InvokeBody::Raw(v) => v.as_slice(),
         _ => return Err("Ham gövde bekleniyordu (Uint8Array gönderin)".into()),
@@ -594,7 +594,7 @@ fn media_import_chunk(app: tauri::AppHandle, request: Request<'_>) -> Result<Str
 
     let meta: Value = serde_json::from_slice(&raw[4..4 + header_len])
         .map_err(|e| format!("Medya başlığı çözülemedi: {e}"))?;
-    let data = &raw[4 + header_len..];
+    let data = raw[4 + header_len..].to_vec();
 
     let id = meta
         .get("id")
@@ -612,24 +612,28 @@ fn media_import_chunk(app: tauri::AppHandle, request: Request<'_>) -> Result<Str
 
     let path = media_cache_dir(&app)?.join(format!("{id}_{name}"));
 
-    let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .open(&path)
-        .map_err(|e| format!("Medya dosyası açılamadı: {e}"))?;
-    if offset > 0 {
-        file.seek(SeekFrom::Start(offset))
-            .map_err(|e| format!("Medya konumlanamadı: {e}"))?;
-    }
-    file.write_all(data)
-        .map_err(|e| format!("Medya yazılamadı: {e}"))?;
-    drop(file);
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(&path)
+            .map_err(|e| format!("Medya dosyası açılamadı: {e}"))?;
+        if offset > 0 {
+            file.seek(SeekFrom::Start(offset))
+                .map_err(|e| format!("Medya konumlanamadı: {e}"))?;
+        }
+        file.write_all(&data)
+            .map_err(|e| format!("Medya yazılamadı: {e}"))?;
+        drop(file);
 
-    if is_final {
-        Ok(path.to_string_lossy().to_string())
-    } else {
-        Ok(String::new())
-    }
+        if is_final {
+            Ok(path.to_string_lossy().to_string())
+        } else {
+            Ok(String::new())
+        }
+    })
+    .await
+    .map_err(|e| format!("Medya yazım görevi hatası: {e}"))?
 }
 
 /// Önbellekte artık kullanılmayan medya dosyalarını siler.

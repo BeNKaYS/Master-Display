@@ -207,7 +207,7 @@
   };
 
   // File → { url, path }. Hata veya tarayıcı modunda null döner.
-  MD.importFileEx = async function (file) {
+  MD.importFileEx = async function (file, onProgress) {
     if (!MD.tauri || !window.__TAURI__.core?.invoke || !file) return null;
     try {
       const name = String(file.name || 'medya.bin');
@@ -220,6 +220,9 @@
         const part = new Uint8Array(await file.slice(offset, end).arrayBuffer());
         const isFinal = end >= total;
         path = (await MD._importChunk(name, id, offset, isFinal, part)) || '';
+        if (typeof onProgress === 'function' && total > 0) {
+          try { onProgress(Math.min(100, Math.round((end / total) * 100))); } catch (e) {}
+        }
         if (isFinal) break;
       }
       if (!path) return null;
@@ -589,8 +592,8 @@
     // Dosyayı oynatılabilir bir URL'ye çevirir.
     // Tauri: ham baytlar diske yazılır, asset URL'si döner (Base64 YOK — bellek şişmez).
     // Tarayıcı: küçük resim/ses Base64, diğerleri Blob URL (eski davranış).
-    static async readFileAsUrl(file, type, token) {
-      const res = await MD.importFileEx(file);
+    static async readFileAsUrl(file, type, token, onProgress) {
+      const res = await MD.importFileEx(file, onProgress);
       if (res) {
         // Diskteki yolu da sakla: önbellek silinirse dosya buradan onarılır.
         // Yol, çağrıya özel bir "token" ile saklanır; eşzamanlı içe aktarmalar
@@ -633,13 +636,13 @@
      * bu yüzden her öğede bulunması gerekir (eskiden yalnızca çağıran tarafta
      * okunuyordu ve kayda hiç geçmiyordu).
      */
-    static async processFile(file) {
+    static async processFile(file, onProgress) {
       // Her içe aktarma kendi token'ını alır → eşzamanlı aktarımlar karışmaz
       const token = 'imp_' + (++PresentationHandler._seq) + '_' + Date.now();
       PresentationHandler._lastImportedPath = null;
       let item = null;
       try {
-        item = await PresentationHandler._processFile(file, token);
+        item = await PresentationHandler._processFile(file, token, onProgress);
       } finally {
         const path = PresentationHandler._paths.get(token);
         PresentationHandler._paths.delete(token);
@@ -712,13 +715,13 @@
       return { url: URL.createObjectURL(blob), path: '' };
     }
 
-    static async _processFile(file, token) {
+    static async _processFile(file, token, onProgress) {
       const type = MediaItem.detectType(file);
       if (type === 'ignore') return null;
 
       const fileName = file.name;
       const title = fileName.replace(/\.[^/.]+$/, '');
-      const srcUrl = await PresentationHandler.readFileAsUrl(file, type, token);
+      const srcUrl = await PresentationHandler.readFileAsUrl(file, type, token, onProgress);
 
       if (type === 'video') {
         return new Promise((resolve) => {
@@ -4251,6 +4254,11 @@
           store.clear();
 
           ready.forEach((item, index) => {
+            const diskPath = item.filePath || item.mdPath || (MD.extractDiskPath ? MD.extractDiskPath(item.src) : '') || '';
+            const blobSize = item.fileSize || (item.fileBlob ? item.fileBlob.size : 0) || 0;
+            // Tauri masaüstünde >15 MB dosyalar (büyük videolar) zaten diske (AppData\media) yazılmıştır;
+            // yüzlerce MB'lık ham fileBlob'u her kayıtta IndexedDB'ye kopyalamak donma/kota hatasına yol açar.
+            const keepBlobInIdb = !(MD.tauri && diskPath && blobSize > 15 * 1024 * 1024);
             store.put({
               id: item.id || `item_${Date.now()}_${index}`,
               order: index,
@@ -4261,7 +4269,7 @@
               fitMode: item.fitMode || 'contain',
               notes: item.notes || '',
               fileName: item.fileName || '',
-              filePath: item.filePath || item.mdPath || (MD.extractDiskPath ? MD.extractDiskPath(item.src) : '') || '',
+              filePath: diskPath,
               fileSize: item.fileSize || 0,
               mdPath: item.mdPath || '',
               slides: Array.isArray(item.slides) ? item.slides : [],
@@ -4271,7 +4279,7 @@
               audioTrack: item.audioTrack || null,
               loopTrack: item.loopTrack || null,
               visualEnabled: item.visualEnabled !== false,
-              fileBlob: item.fileBlob || null,
+              fileBlob: keepBlobInIdb ? (item.fileBlob || null) : null,
               src: (item.src && !item.src.startsWith('blob:')) ? item.src : ''
             });
           });
@@ -5005,8 +5013,8 @@
       this.folderInput?.addEventListener('change', async (e) => {
         if (e.target.files?.length) {
           const picked = Array.from(e.target.files);
-          await this.handleUploadedFiles(picked);
           e.target.value = '';
+          await this.handleUploadedFiles(picked);
         }
       });
 
@@ -5015,8 +5023,8 @@
       this.fileInput?.addEventListener('change', async (e) => {
         if (e.target.files?.length) {
           const picked = Array.from(e.target.files);
-          await this.handleUploadedFiles(picked);
           e.target.value = '';
+          await this.handleUploadedFiles(picked);
         }
       });
 
@@ -8009,7 +8017,7 @@
         else if (item.type === 'presentation') typeIcon = '📊';
 
         let statusBadge = '';
-        if (item.pending) statusBadge = `<span style="color:#f6ad55; font-weight:700; font-size:9px;">⏳ YÜKLENİYOR</span>`;
+        if (item.pending) statusBadge = `<span style="color:#f6ad55; font-weight:700; font-size:9px;">${item.progress > 0 ? `⏳ %${item.progress}` : '⏳ YÜKLENİYOR'}</span>`;
         else if (isLive) statusBadge = `<span class="status-live-text">● CANLI</span>`;
         else if (isPreview) statusBadge = `<span class="status-preview-text" title="Ön Görünüm">👁️</span>`;
 
@@ -10307,6 +10315,7 @@
           fileSize: file.size
         });
         pending.pending = true;
+        pending.progress = 0;
         this.appState.state.playlist.addItem(pending);
         queue.push({ file, pending, realPath });
       }
@@ -10319,51 +10328,92 @@
       this.renderPlaylistDb();
       this.renderMediaPreview();
 
-      let count = 0;
-      for (const { file, pending, realPath } of queue) {
-        const idx = this.appState.state.playlist.items.findIndex(i => i.id === pending.id);
-        if (idx < 0) continue; // kullanıcı bu sırada satırı sildi
-        const previewIdx = this.selectedItemIndex;
-        try {
-          PresentationHandler._lastImportedPath = null;
-          // PPTX çizimi uzun sürebilir: satırda ilerleme göster
-          window.__mdPptxProgress = (done, total, t) => {
-            pending.notes = `Slayt ${done}/${total} çiziliyor…`;
-            const row = this.playlistDbContainer?.querySelector(`.playlist-row[data-index="${idx}"] .playlist-status-badge`);
-            if (row) row.innerHTML = `<span style="color:#f6ad55; font-weight:700; font-size:9px;">🎬 ${done}/${total}</span>`;
-          };
-          const item = await PresentationHandler.processFile(file);
-          window.__mdPptxProgress = null;
-          if (item) {
-            const bestDiskPath = realPath || item.filePath || item.mdPath || (MD.extractDiskPath ? MD.extractDiskPath(item.src) : '') || '';
-            if (bestDiskPath) {
-              item.filePath = bestDiskPath;
-              if (!item.mdPath) item.mdPath = bestDiskPath;
-            }
-            this.appState.state.playlist.items[idx] = item;
-            count++;
-          } else {
-            this.appState.state.playlist.items.splice(idx, 1);
-            if (previewIdx > idx) this.selectedItemIndex = previewIdx - 1;
-          }
-        } catch (err) {
-          console.error('Dosya ekleme hatası:', err, file.name);
-          this.appState.state.playlist.items.splice(idx, 1);
-          if (previewIdx > idx) this.selectedItemIndex = previewIdx - 1;
-        }
-        this.renderPlaylistDb();
-        // Sadece izlenen satır değiştiyse ön izlemeyi tazele (diğer ön izlemeyi bölmemek için)
-        if (this.selectedItemIndex === idx) this.renderMediaPreview();
-      }
+      // Eşzamanlı eklemeleri sıraya al: büyük video (200-600 MB) yazılırken yeni dosya eklenirse
+      // IPC çakışması veya sıra kayması (pending takılı kalması) yaşanmaz.
+      const runBatch = async () => {
+        let count = 0;
+        for (const { file, pending, realPath } of queue) {
+          const items = this.appState.state.playlist.items;
+          const startIdx = items.findIndex(i => i.id === pending.id);
+          if (startIdx < 0) continue; // kullanıcı bu sırada satırı sildi
 
-      if (count > 0) {
-        if (this.selectedItemIndex >= this.appState.state.playlist.items.length) {
-          this.selectedItemIndex = Math.max(0, this.appState.state.playlist.items.length - 1);
+          try {
+            PresentationHandler._lastImportedPath = null;
+            // PPTX çizimi uzun sürebilir: satırda ilerleme göster
+            window.__mdPptxProgress = (done, total, t) => {
+              pending.notes = `Slayt ${done}/${total} çiziliyor…`;
+              const curIdx = this.appState.state.playlist.items.findIndex(i => i.id === pending.id);
+              if (curIdx >= 0) {
+                const row = this.playlistDbContainer?.querySelector(`.playlist-row[data-index="${curIdx}"] .playlist-status-badge`);
+                if (row) row.innerHTML = `<span style="color:#f6ad55; font-weight:700; font-size:9px;">🎬 ${done}/${total}</span>`;
+              }
+            };
+            const onImportProgress = (pct) => {
+              pending.progress = pct;
+              const curIdx = this.appState.state.playlist.items.findIndex(i => i.id === pending.id);
+              if (curIdx >= 0) {
+                const row = this.playlistDbContainer?.querySelector(`.playlist-row[data-index="${curIdx}"] .playlist-status-badge`);
+                if (row) row.innerHTML = `<span style="color:#f6ad55; font-weight:700; font-size:9px;">⏳ %${pct}</span>`;
+              }
+            };
+
+            const item = await PresentationHandler.processFile(file, onImportProgress);
+            window.__mdPptxProgress = null;
+
+            // KRİTİK: await sonrasında güncel indeksi yeniden bul (sıra değişmiş veya silinmiş olabilir!)
+            const liveIdx = this.appState.state.playlist.items.findIndex(i => i.id === pending.id);
+            const previewIdx = this.selectedItemIndex;
+
+            if (liveIdx < 0) {
+              // Kullanıcı yükleme sürerken satırı silmiş
+              continue;
+            }
+
+            if (item) {
+              const bestDiskPath = realPath || item.filePath || item.mdPath || (MD.extractDiskPath ? MD.extractDiskPath(item.src) : '') || '';
+              if (bestDiskPath) {
+                item.filePath = bestDiskPath;
+                if (!item.mdPath) item.mdPath = bestDiskPath;
+                if (MD.tauri && (item.fileSize || 0) > 15 * 1024 * 1024) {
+                  item.fileBlob = null; // Büyük video zaten diskte; RAM/IndexedDB şişmesini önle
+                }
+              }
+              this.appState.state.playlist.items[liveIdx] = item;
+              count++;
+            } else {
+              this.appState.state.playlist.items.splice(liveIdx, 1);
+              if (previewIdx > liveIdx) this.selectedItemIndex = previewIdx - 1;
+              this._toast?.(`❌ "${file.name}" içe aktarılamadı`, 'err');
+            }
+          } catch (err) {
+            window.__mdPptxProgress = null;
+            console.error('Dosya ekleme hatası:', err, file.name);
+            const liveIdx = this.appState.state.playlist.items.findIndex(i => i.id === pending.id);
+            const previewIdx = this.selectedItemIndex;
+            if (liveIdx >= 0) {
+              this.appState.state.playlist.items.splice(liveIdx, 1);
+              if (previewIdx > liveIdx) this.selectedItemIndex = previewIdx - 1;
+            }
+            this._toast?.(`❌ "${file.name}" eklenirken hata oluştu`, 'err');
+          }
+
+          this.renderPlaylistDb();
+          this.renderMediaPreview();
         }
-        this.renderPlaylistDb();
-        this.renderMediaPreview();
-        await this.saveCurrentPlaylist();
-      }
+
+        if (count > 0) {
+          if (this.selectedItemIndex >= this.appState.state.playlist.items.length) {
+            this.selectedItemIndex = Math.max(0, this.appState.state.playlist.items.length - 1);
+          }
+          this.renderPlaylistDb();
+          this.renderMediaPreview();
+          await this.saveCurrentPlaylist();
+        }
+      };
+
+      const prev = this._uploadChain || Promise.resolve();
+      this._uploadChain = prev.then(runBatch, runBatch);
+      return this._uploadChain;
     }
 
     /**
